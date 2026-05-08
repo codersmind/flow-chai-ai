@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.db
+*.db-journal
+localvoiceflow.db*
+next-env.d.ts
