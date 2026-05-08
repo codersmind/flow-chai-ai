@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useSimulatorStore } from "@/stores/simulator-store";
 import { cn } from "@/lib/utils";
+import type { TraceEvent } from "@/types/trace";
 
 const LEVEL_COLORS: Record<string, string> = {
   info: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-100",
@@ -14,16 +15,28 @@ const LEVEL_COLORS: Record<string, string> = {
 
 export function TraceLog() {
   const traces = useSimulatorStore((s) => s.traces);
+  const safeTraces = (traces as Array<Partial<TraceEvent> | null | undefined>).filter(
+    (t): t is TraceEvent =>
+      !!t &&
+      typeof t.id === "string" &&
+      typeof t.conversationId === "string" &&
+      typeof t.level === "string" &&
+      typeof t.createdAt === "number" &&
+      typeof t.message === "string"
+  );
   return (
     <ScrollArea className="h-full">
       <div className="space-y-2 p-3">
-        {traces.length === 0 ? (
+        {safeTraces.length === 0 ? (
           <p className="text-xs text-muted-foreground">Run the simulator to see traces here.</p>
         ) : null}
-        {traces.map((t) => (
+        {safeTraces.map((t) => (
           <div key={t.id} className="rounded border bg-background p-2 text-xs">
             <div className="mb-1 flex items-center justify-between">
-              <Badge variant="outline" className={cn(LEVEL_COLORS[t.level])}>
+              <Badge
+                variant="outline"
+                className={cn(LEVEL_COLORS[t.level] ?? LEVEL_COLORS.info)}
+              >
                 {t.level}
               </Badge>
               <span className="text-[10px] text-muted-foreground">

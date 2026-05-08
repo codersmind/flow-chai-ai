@@ -45,6 +45,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     body.conversationId ??
     (await createConversation({ projectId: flow.projectId, flowId: flow.id }));
 
+  const runtimeVariables: Record<string, unknown> = {
+    ...(body.variables ?? {}),
+  };
+  if (typeof body.userMessage === "string" && body.userMessage.trim().length > 0) {
+    runtimeVariables.user_message = body.userMessage;
+    runtimeVariables.last_user_message = body.userMessage;
+  }
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -73,7 +81,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           flowId: flow.id,
           conversationId,
           graph,
-          variables: body.variables ?? {},
+          variables: runtimeVariables,
           resumeFromNodeId: body.resumeFromNodeId,
           userMessage: body.userMessage,
           onEvent: async (event) => {

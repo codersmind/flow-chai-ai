@@ -24,9 +24,14 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
   const [voiceMode, setVoiceMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [ttsSupported, setTtsSupported] = useState(false);
   const sttHandleRef = useRef<{ stop: () => void } | null>(null);
   const lastSpokenIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setTtsSupported(isTtsSupported());
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -92,12 +97,19 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
           try {
             const parsed = JSON.parse(dataLine);
             if (eventName === "done") {
+              const isAwaiting = !!parsed.awaitingNodeId;
               useSimulatorStore.setState({
                 conversationId: parsed.conversationId,
                 awaitingNodeId: parsed.awaitingNodeId,
                 variables: parsed.variables ?? sim.variables,
+                pendingChoices: isAwaiting
+                  ? useSimulatorStore.getState().pendingChoices
+                  : null,
+                pendingSuggestions: isAwaiting
+                  ? useSimulatorStore.getState().pendingSuggestions
+                  : [],
                 running: false,
-                ended: !parsed.awaitingNodeId,
+                ended: !isAwaiting,
               });
             } else {
               handleEvent(parsed as SimulatorEvent);
@@ -118,6 +130,10 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
   };
 
   const handleSend = async (rawText?: string) => {
+    if (sim.running) {
+      toast.info("Please wait, assistant is still processing...");
+      return;
+    }
     const text = (rawText ?? input).trim();
     if (!text) return;
     const userMsg: SimulatorMessage = {
@@ -138,8 +154,8 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
         await runFlow({ userMessage: text, resumeFromNodeId: pendingNodeId });
       }
     } else {
-      // No awaiting node - just record the user input variable
-      await runFlow({});
+      // Continue execution with fresh user input available as {{user_message}}
+      await runFlow({ userMessage: text });
     }
   };
 
@@ -193,7 +209,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
           >
             {voiceMode ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
           </Button>
-          {isTtsSupported() ? (
+          {ttsSupported ? (
             <Button
               size="icon"
               variant={ttsEnabled ? "default" : "outline"}
@@ -237,6 +253,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
                   size="sm"
                   variant="outline"
                   onClick={() => handleSend(c.label)}
+                  disabled={sim.running}
                 >
                   {c.label}
                 </Button>
@@ -246,10 +263,21 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
           {sim.pendingSuggestions && sim.pendingSuggestions.length > 0 ? (
             <div className="flex flex-wrap gap-2 pt-1">
               {sim.pendingSuggestions.map((s) => (
-                <Button key={s} size="sm" variant="ghost" onClick={() => handleSend(s)}>
+                <Button
+                  key={s}
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleSend(s)}
+                  disabled={sim.running}
+                >
                   {s}
                 </Button>
               ))}
+            </div>
+          ) : null}
+          {sim.running ? (
+            <div className="mr-auto max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+              Assistant is thinking...
             </div>
           ) : null}
         </div>

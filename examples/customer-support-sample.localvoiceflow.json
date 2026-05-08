@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "exportedAt": "2026-05-08T12:00:00.000Z",
+  "project": {
+    "id": "prj_sample_support",
+    "name": "Customer Support Assistant (Sample)",
+    "description": "Sample voice/text support bot with capture, choice, condition, KB, API and LLM nodes.",
+    "defaultModel": "llama3.2",
+    "globalInstructions": "You are a concise and friendly support assistant. Use provided variables and KB context. If unsure, ask a clarifying question.",
+    "personality": "Helpful, calm, and practical.",
+    "guardrails": "Never invent account actions. For sensitive requests, route to human support."
+  },
+  "flows": [
+    {
+      "id": "flw_sample_main",
+      "name": "Main Flow",
+      "graph": {
+        "nodes": [
+          {
+            "id": "start",
+            "type": "start",
+            "position": { "x": 60, "y": 220 },
+            "data": { "label": "Start" }
+          },
+          {
+            "id": "welcome",
+            "type": "message",
+            "position": { "x": 290, "y": 220 },
+            "data": {
+              "label": "Welcome",
+              "message": "Hi! I can help with orders, refunds, and account issues. What can I help you with today?"
+            }
+          },
+          {
+            "id": "capture_issue",
+            "type": "capture",
+            "position": { "x": 540, "y": 220 },
+            "data": {
+              "label": "Capture Issue",
+              "prompt": "Please describe your issue in one sentence.",
+              "variable": "user_issue",
+              "suggestedReplies": [
+                "Where is my order?",
+                "I want a refund",
+                "I can't log in"
+              ]
+            }
+          },
+          {
+            "id": "intent_choice",
+            "type": "choice",
+            "position": { "x": 820, "y": 220 },
+            "data": {
+              "label": "Intent Choice",
+              "prompt": "Which category fits best?",
+              "options": [
+                { "id": "order_status", "label": "Order status" },
+                { "id": "refund", "label": "Refund" },
+                { "id": "account_help", "label": "Account help" }
+              ]
+            }
+          },
+          {
+            "id": "set_context",
+            "type": "set_variable",
+            "position": { "x": 1100, "y": 60 },
+            "data": {
+              "label": "Set Context",
+              "assignments": [
+                { "id": "a1", "variable": "intent", "value": "order_status" },
+                { "id": "a2", "variable": "needs_order_lookup", "value": "true" }
+              ]
+            }
+          },
+          {
+            "id": "kb_order",
+            "type": "kb_search",
+            "position": { "x": 1360, "y": 60 },
+            "data": {
+              "label": "KB: Order Policies",
+              "query": "Order status policy and shipping timelines for issue: {{user_issue}}",
+              "topK": 4,
+              "outputVariable": "kb_context"
+            }
+          },
+          {
+            "id": "llm_order",
+            "type": "llm",
+            "position": { "x": 1620, "y": 60 },
+            "data": {
+              "label": "LLM Response (Order)",
+              "systemPrompt": "You are support assistant. Use KB context when available.",
+              "userPrompt": "User issue: {{user_issue}}\\nIntent: {{intent}}\\nKB:\\n{{kb_context}}\\nRespond with steps and ask for order ID if needed.",
+              "temperature": 0.4,
+              "jsonMode": false,
+              "outputVariable": ""
+            }
+          },
+          {
+            "id": "refund_route",
+            "type": "set_variable",
+            "position": { "x": 1100, "y": 220 },
+            "data": {
+              "label": "Set Refund Intent",
+              "assignments": [
+                { "id": "a3", "variable": "intent", "value": "refund" }
+              ]
+            }
+          },
+          {
+            "id": "api_refund_policy",
+            "type": "api_call",
+            "position": { "x": 1360, "y": 220 },
+            "data": {
+              "label": "API: Refund Policy",
+              "method": "GET",
+              "url": "https://jsonplaceholder.typicode.com/todos/1",
+              "headers": {},
+              "body": "",
+              "outputVariable": "api_result"
+            }
+          },
+          {
+            "id": "llm_refund",
+            "type": "llm",
+            "position": { "x": 1620, "y": 220 },
+            "data": {
+              "label": "LLM Response (Refund)",
+              "systemPrompt": "You are support assistant. Be clear and policy-driven.",
+              "userPrompt": "User issue: {{user_issue}}\\nIntent: {{intent}}\\nAPI Result: {{api_result}}\\nProvide refund eligibility steps.",
+              "temperature": 0.3,
+              "jsonMode": false,
+              "outputVariable": ""
+            }
+          },
+          {
+            "id": "account_router",
+            "type": "condition",
+            "position": { "x": 1100, "y": 380 },
+            "data": {
+              "label": "Account Router",
+              "mode": "rules",
+              "rules": [
+                {
+                  "id": "reset_pw",
+                  "variable": "user_issue",
+                  "operator": "contains",
+                  "value": "password"
+                }
+              ],
+              "routes": [
+                { "id": "reset_pw", "label": "Password reset" },
+                { "id": "else", "label": "General account help" }
+              ]
+            }
+          },
+          {
+            "id": "msg_pw",
+            "type": "message",
+            "position": { "x": 1360, "y": 340 },
+            "data": {
+              "label": "Password Reset Guide",
+              "message": "No worries. Go to Login > Forgot Password, submit your email, and follow the reset link. If the email does not arrive in 5 minutes, check spam and request again."
+            }
+          },
+          {
+            "id": "llm_account",
+            "type": "llm",
+            "position": { "x": 1360, "y": 460 },
+            "data": {
+              "label": "LLM Response (Account)",
+              "systemPrompt": "You are account support assistant.",
+              "userPrompt": "User issue: {{user_issue}}\\nGive practical troubleshooting and when to escalate.",
+              "temperature": 0.5,
+              "jsonMode": false,
+              "outputVariable": ""
+            }
+          },
+          {
+            "id": "comment_1",
+            "type": "comment",
+            "position": { "x": 820, "y": 20 },
+            "data": {
+              "label": "Comment",
+              "text": "Sample flow: one entry point branching into order/refund/account lanes."
+            }
+          },
+          {
+            "id": "end",
+            "type": "end",
+            "position": { "x": 1880, "y": 220 },
+            "data": { "label": "End" }
+          }
+        ],
+        "edges": [
+          { "id": "e_start_welcome", "source": "start", "target": "welcome" },
+          { "id": "e_welcome_capture", "source": "welcome", "target": "capture_issue" },
+          { "id": "e_capture_choice", "source": "capture_issue", "target": "intent_choice" },
+
+          { "id": "e_choice_order", "source": "intent_choice", "sourceHandle": "order_status", "target": "set_context" },
+          { "id": "e_order_set_kb", "source": "set_context", "target": "kb_order" },
+          { "id": "e_order_kb_llm", "source": "kb_order", "target": "llm_order" },
+          { "id": "e_order_llm_end", "source": "llm_order", "target": "end" },
+
+          { "id": "e_choice_refund", "source": "intent_choice", "sourceHandle": "refund", "target": "refund_route" },
+          { "id": "e_refund_set_api", "source": "refund_route", "target": "api_refund_policy" },
+          { "id": "e_refund_api_llm", "source": "api_refund_policy", "target": "llm_refund" },
+          { "id": "e_refund_llm_end", "source": "llm_refund", "target": "end" },
+
+          { "id": "e_choice_account", "source": "intent_choice", "sourceHandle": "account_help", "target": "account_router" },
+          { "id": "e_account_pw", "source": "account_router", "sourceHandle": "reset_pw", "target": "msg_pw" },
+          { "id": "e_account_else", "source": "account_router", "sourceHandle": "else", "target": "llm_account" },
+          { "id": "e_msg_pw_end", "source": "msg_pw", "target": "end" },
+          { "id": "e_account_llm_end", "source": "llm_account", "target": "end" }
+        ]
+      }
+    }
+  ]
+}
