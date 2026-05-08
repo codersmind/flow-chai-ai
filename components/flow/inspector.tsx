@@ -56,10 +56,10 @@ export function FlowInspector() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b p-3">
+      <div className="flex items-center justify-between border-b p-4">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{node.type}</p>
-          <p className="text-sm font-semibold">{(data.label as string) || node.id}</p>
+          <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{node.type}</p>
+          <p className="text-sm font-semibold tracking-tight">{(data.label as string) || node.id}</p>
         </div>
         {node.type !== "start" ? (
           <Button
@@ -73,7 +73,7 @@ export function FlowInspector() {
         ) : null}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-3">
           <div>
             <Label htmlFor="node-label">Label</Label>

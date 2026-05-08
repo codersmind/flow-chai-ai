@@ -193,9 +193,15 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b p-2">
+      <div className="flex items-center justify-between border-b px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={startConversation} disabled={sim.running}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-xl"
+            onClick={startConversation}
+            disabled={sim.running}
+          >
             <RotateCcw className="mr-1 h-3.5 w-3.5" />
             {sim.conversationId ? "Restart" : "Start"}
           </Button>
@@ -203,6 +209,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
         <div className="flex items-center gap-2">
           <Button
             size="icon"
+              className="rounded-xl"
             variant={voiceMode ? "default" : "outline"}
             onClick={() => setVoiceMode((v) => !v)}
             title="Voice mode"
@@ -212,6 +219,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
           {ttsSupported ? (
             <Button
               size="icon"
+              className="rounded-xl"
               variant={ttsEnabled ? "default" : "outline"}
               onClick={() => {
                 setTtsEnabled((v) => !v);
@@ -226,7 +234,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
       </div>
 
       <ScrollArea className="flex-1">
-        <div ref={scrollRef} className="space-y-2 p-3">
+        <div ref={scrollRef} className="space-y-2.5 p-3">
           {sim.messages.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               Press Start to begin a simulation. Configure flow nodes on the left to see them
@@ -238,8 +246,8 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
               key={m.id}
               className={
                 m.role === "user"
-                  ? "ml-auto max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
-                  : "mr-auto max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm"
+                  ? "ml-auto max-w-[85%] rounded-2xl bg-primary px-3 py-2 text-sm text-primary-foreground shadow-sm"
+                  : "mr-auto max-w-[85%] rounded-2xl bg-muted px-3 py-2 text-sm"
               }
             >
               <p className="whitespace-pre-wrap">{m.content}</p>
@@ -252,6 +260,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
                   key={c.id}
                   size="sm"
                   variant="outline"
+                  className="rounded-xl"
                   onClick={() => handleSend(c.label)}
                   disabled={sim.running}
                 >
@@ -267,6 +276,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
                   key={s}
                   size="sm"
                   variant="ghost"
+                  className="rounded-xl"
                   onClick={() => handleSend(s)}
                   disabled={sim.running}
                 >
@@ -284,7 +294,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
       </ScrollArea>
 
       <form
-        className="flex items-center gap-2 border-t p-2"
+        className="flex items-center gap-2 border-t p-3"
         onSubmit={(e) => {
           e.preventDefault();
           handleSend();
@@ -300,6 +310,7 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
           <Button
             type="button"
             size="icon"
+            className="rounded-xl"
             variant={recording ? "destructive" : "outline"}
             onClick={toggleRecording}
           >

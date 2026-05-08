@@ -42,8 +42,8 @@ const ENTRIES: PaletteEntry[] = [
 export function NodePalette() {
   const addNode = useCanvasStore((s) => s.addNode);
   return (
-    <div className="flex flex-col gap-1 p-2">
-      <h3 className="px-1 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-col gap-1 p-3">
+      <h3 className="px-1 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         Add Node
       </h3>
       {ENTRIES.map((entry) => (
@@ -61,12 +61,14 @@ export function NodePalette() {
               y: 200 + Math.random() * 200,
             })
           }
-          className="flex items-start gap-2 rounded-md border bg-background px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="group flex items-start gap-2 rounded-xl border bg-background/70 px-3 py-2.5 text-left text-sm transition-all hover:-translate-y-0.5 hover:bg-accent/80 hover:text-accent-foreground hover:shadow-sm"
           title={entry.description}
         >
-          <span className="mt-0.5 text-muted-foreground">{entry.icon}</span>
+          <span className="mt-0.5 rounded-lg bg-primary/10 p-1 text-primary transition-colors group-hover:bg-primary/20">
+            {entry.icon}
+          </span>
           <span className="flex flex-col">
-            <span className="text-xs font-semibold">{entry.label}</span>
+            <span className="text-xs font-semibold leading-tight">{entry.label}</span>
             <span className="text-[10px] text-muted-foreground">{entry.description}</span>
           </span>
         </button>

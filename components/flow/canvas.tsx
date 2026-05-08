@@ -20,9 +20,17 @@ interface FlowCanvasProps {
   flowId: string;
   initialNodes: Node[];
   initialEdges: Edge[];
+  onNodeDoubleClick?: () => void;
+  onPaneClick?: () => void;
 }
 
-function FlowCanvasInner({ flowId, initialNodes, initialEdges }: FlowCanvasProps) {
+function FlowCanvasInner({
+  flowId,
+  initialNodes,
+  initialEdges,
+  onNodeDoubleClick,
+  onPaneClick,
+}: FlowCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const rfInstanceRef = useRef<ReactFlowInstance | null>(null);
 
@@ -135,7 +143,14 @@ function FlowCanvasInner({ flowId, initialNodes, initialEdges }: FlowCanvasProps
           rfInstanceRef.current = instance;
         }}
         onNodeClick={(_, node) => setSelectedNode(node.id)}
-        onPaneClick={() => setSelectedNode(null)}
+        onNodeDoubleClick={(_, node) => {
+          setSelectedNode(node.id);
+          onNodeDoubleClick?.();
+        }}
+        onPaneClick={() => {
+          setSelectedNode(null);
+          onPaneClick?.();
+        }}
         fitView
         deleteKeyCode={["Backspace", "Delete"]}
         proOptions={{ hideAttribution: true }}
