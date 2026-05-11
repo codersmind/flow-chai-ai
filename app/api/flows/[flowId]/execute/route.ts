@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { executeFlow } from "@/lib/flow-engine/engine";
-import { getFlow } from "@/lib/db/repositories/projects";
+import { getFlow, getProject } from "@/lib/db/repositories/projects";
+import { mergeAgentVariableDefaults } from "@/lib/variables/agent-variables";
 import {
   appendTraceEvent,
   createConversation,
@@ -45,9 +46,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     body.conversationId ??
     (await createConversation({ projectId: flow.projectId, flowId: flow.id }));
 
-  const runtimeVariables: Record<string, unknown> = {
-    ...(body.variables ?? {}),
-  };
+  const project = await getProject(flow.projectId);
+  const defs = project?.agentVariables ?? [];
+  const runtimeVariables: Record<string, unknown> = mergeAgentVariableDefaults(
+    { ...(body.variables ?? {}) },
+    defs
+  );
   if (typeof body.userMessage === "string" && body.userMessage.trim().length > 0) {
     runtimeVariables.user_message = body.userMessage;
     runtimeVariables.last_user_message = body.userMessage;

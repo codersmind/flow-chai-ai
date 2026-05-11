@@ -18,6 +18,8 @@ import { toast } from "sonner";
 
 interface FlowCanvasProps {
   flowId: string;
+  /** `flows.updated_at` from the server — when it changes and the canvas is clean, reload graph from props. */
+  graphRevision?: number;
   initialNodes: Node[];
   initialEdges: Edge[];
   onNodeDoubleClick?: () => void;
@@ -26,6 +28,7 @@ interface FlowCanvasProps {
 
 function FlowCanvasInner({
   flowId,
+  graphRevision,
   initialNodes,
   initialEdges,
   onNodeDoubleClick,
@@ -48,13 +51,33 @@ function FlowCanvasInner({
     undo,
     redo,
     flowId: storedId,
+    lastSyncedGraphRevision,
+    clearCanvasSelection,
   } = useCanvasStore();
 
   useEffect(() => {
     if (storedId !== flowId) {
-      initialize(flowId, initialNodes, initialEdges);
+      initialize(flowId, initialNodes, initialEdges, graphRevision ?? null);
+      return;
     }
-  }, [flowId, initialNodes, initialEdges, initialize, storedId]);
+    if (
+      graphRevision != null &&
+      lastSyncedGraphRevision != null &&
+      graphRevision > lastSyncedGraphRevision &&
+      !dirty
+    ) {
+      initialize(flowId, initialNodes, initialEdges, graphRevision);
+    }
+  }, [
+    flowId,
+    graphRevision,
+    storedId,
+    dirty,
+    lastSyncedGraphRevision,
+    initialNodes,
+    initialEdges,
+    initialize,
+  ]);
 
   // Autosave
   useEffect(() => {
@@ -84,7 +107,11 @@ function FlowCanvasInner({
           }),
         });
         if (!res.ok) throw new Error(`Save failed (${res.status})`);
+        const payload = (await res.json()) as { flow?: { updatedAt?: number } };
         clearDirty();
+        if (typeof payload.flow?.updatedAt === "number") {
+          useCanvasStore.setState({ lastSyncedGraphRevision: payload.flow.updatedAt });
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Save failed";
         toast.error(message);
@@ -96,6 +123,17 @@ function FlowCanvasInner({
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const el = e.target;
+      if (
+        el instanceof HTMLElement &&
+        (el.matches("input, textarea, select, [contenteditable='true']") ||
+          el.closest('[role="dialog"]') ||
+          el.closest('[role="combobox"]') ||
+          el.closest('[role="tab"]') ||
+          el.closest("[data-radix-popper-content-wrapper]"))
+      ) {
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -148,7 +186,7 @@ function FlowCanvasInner({
           onNodeDoubleClick?.();
         }}
         onPaneClick={() => {
-          setSelectedNode(null);
+          clearCanvasSelection();
           onPaneClick?.();
         }}
         fitView

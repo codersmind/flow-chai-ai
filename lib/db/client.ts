@@ -27,6 +27,7 @@ async function ensureSchema(client: ReturnType<typeof createClient>) {
       global_instructions TEXT,
       personality TEXT,
       guardrails TEXT,
+      agent_variables_json TEXT NOT NULL DEFAULT '[]',
       created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
       updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
     );
@@ -96,6 +97,16 @@ async function ensureSchema(client: ReturnType<typeof createClient>) {
 
   for (const stmt of statements) {
     await client.execute(stmt);
+  }
+
+  const col = await client.execute(
+    "SELECT COUNT(*) AS c FROM pragma_table_info('projects') WHERE name = 'agent_variables_json'"
+  );
+  const row = col.rows[0] as unknown as { c: number } | undefined;
+  if (!row || Number(row.c) === 0) {
+    await client.execute(
+      "ALTER TABLE projects ADD COLUMN agent_variables_json TEXT NOT NULL DEFAULT '[]'"
+    );
   }
 }
 

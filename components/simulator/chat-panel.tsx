@@ -134,8 +134,17 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
       toast.info("Please wait, assistant is still processing...");
       return;
     }
-    const text = (rawText ?? input).trim();
-    if (!text) return;
+    let text = (rawText ?? input).trim();
+    const suggestions = useSimulatorStore.getState().pendingSuggestions ?? [];
+    if (!text && suggestions.length === 1) {
+      text = suggestions[0].trim();
+    }
+    if (!text) {
+      if (suggestions.length > 1) {
+        toast.info("Pick a suggested reply below or type your answer.");
+      }
+      return;
+    }
     const userMsg: SimulatorMessage = {
       id: `msg_${nanoid(6)}`,
       role: "user",

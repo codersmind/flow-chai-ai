@@ -58,6 +58,7 @@ export const useSimulatorStore = create<SimulatorState>((set) => ({
           return { traces: [event.trace, ...state.traces].slice(0, 200) };
         case "request_input":
           return {
+            awaitingNodeId: event.nodeId ?? state.awaitingNodeId,
             pendingChoices: event.choices ?? null,
             pendingSuggestions: event.suggestedReplies ?? [],
           };

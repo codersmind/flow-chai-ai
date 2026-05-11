@@ -25,6 +25,13 @@ export type SimulatorEvent =
   | { kind: "node_exit"; nodeId: string; nodeKind: string }
   | { kind: "variable_set"; variable: string; value: unknown }
   | { kind: "trace"; trace: TraceEvent }
-  | { kind: "request_input"; prompt: string; suggestedReplies?: string[]; choices?: { id: string; label: string }[] }
+  | {
+      kind: "request_input";
+      /** Capture / choice node id — lets the simulator know we are awaiting input before the final `done` event. */
+      nodeId?: string;
+      prompt: string;
+      suggestedReplies?: string[];
+      choices?: { id: string; label: string }[];
+    }
   | { kind: "end"; reason?: string }
   | { kind: "error"; error: string };

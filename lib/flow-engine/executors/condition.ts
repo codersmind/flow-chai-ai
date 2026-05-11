@@ -54,13 +54,58 @@ export const conditionExecutor: NodeExecutor = async (node, ctx) => {
         createdAt: Date.now(),
       },
     });
-    return { nextNodeId: nextDefaultTarget(ctx.input.graph, node.id, handle) };
+    const next = nextDefaultTarget(ctx.input.graph, node.id, handle);
+    if (!next) {
+      await ctx.emit({
+        kind: "trace",
+        trace: {
+          id: `trc_${Date.now()}`,
+          conversationId: ctx.input.conversationId,
+          nodeId: node.id,
+          nodeKind: "condition",
+          level: "warn",
+          message: `No outgoing edge for route handle "${handle}". Connect that route's port to the next block.`,
+          createdAt: Date.now(),
+        },
+      });
+    }
+    return { nextNodeId: next };
   }
 
   for (const rule of data.rules ?? []) {
     if (evaluateRule(rule, ctx.variables)) {
-      return { nextNodeId: nextDefaultTarget(ctx.input.graph, node.id, rule.id) };
+      const next = nextDefaultTarget(ctx.input.graph, node.id, rule.id);
+      if (!next) {
+        await ctx.emit({
+          kind: "trace",
+          trace: {
+            id: `trc_${Date.now()}`,
+            conversationId: ctx.input.conversationId,
+            nodeId: node.id,
+            nodeKind: "condition",
+            level: "warn",
+            message: `Rule matched but there is no edge from handle "${rule.id}". In the canvas, drag from that rule's dot to the next node.`,
+            createdAt: Date.now(),
+          },
+        });
+      }
+      return { nextNodeId: next };
     }
   }
-  return { nextNodeId: nextDefaultTarget(ctx.input.graph, node.id, "else") };
+  const elseNext = nextDefaultTarget(ctx.input.graph, node.id, "else");
+  if (!elseNext) {
+    await ctx.emit({
+      kind: "trace",
+      trace: {
+        id: `trc_${Date.now()}`,
+        conversationId: ctx.input.conversationId,
+        nodeId: node.id,
+        nodeKind: "condition",
+        level: "warn",
+        message: `No edge from the Else port (handle id "else"). Connect the Else row's handle to your fallback path.`,
+        createdAt: Date.now(),
+      },
+    });
+  }
+  return { nextNodeId: elseNext };
 };

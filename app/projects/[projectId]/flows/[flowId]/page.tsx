@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getFlow, listFlowsForProject } from "@/lib/db/repositories/projects";
+import { getFlow, listFlowsForProject, getProject } from "@/lib/db/repositories/projects";
 import { BuilderShell } from "./builder-shell";
 import type { Node, Edge } from "@xyflow/react";
 
@@ -9,8 +9,8 @@ interface PageProps {
 
 export default async function FlowBuilderPage({ params }: PageProps) {
   const { projectId, flowId } = await params;
-  const flow = await getFlow(flowId);
-  if (!flow || flow.projectId !== projectId) notFound();
+  const [flow, project] = await Promise.all([getFlow(flowId), getProject(projectId)]);
+  if (!flow || flow.projectId !== projectId || !project) notFound();
 
   let initialNodes: Node[] = [];
   let initialEdges: Edge[] = [];
@@ -29,9 +29,11 @@ export default async function FlowBuilderPage({ params }: PageProps) {
       projectId={projectId}
       flowId={flowId}
       flowName={flow.name}
+      graphRevision={flow.updatedAt}
       flows={flows.map((f) => ({ id: f.id, name: f.name }))}
       initialNodes={initialNodes}
       initialEdges={initialEdges}
+      agentVariables={project.agentVariables}
     />
   );
 }

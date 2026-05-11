@@ -23,9 +23,22 @@ export const choiceExecutor: NodeExecutor = async (node, ctx) => {
       );
       matchedHandle = partial?.id;
     }
-    return {
-      nextNodeId: nextDefaultTarget(ctx.input.graph, node.id, matchedHandle),
-    };
+    const next = nextDefaultTarget(ctx.input.graph, node.id, matchedHandle ?? null);
+    if (!next && matchedHandle) {
+      await ctx.emit({
+        kind: "trace",
+        trace: {
+          id: `trc_${Date.now()}`,
+          conversationId: ctx.input.conversationId,
+          nodeId: node.id,
+          nodeKind: "choice",
+          level: "warn",
+          message: `No outgoing edge for option handle "${matchedHandle}". Connect that option's dot to the next node.`,
+          createdAt: Date.now(),
+        },
+      });
+    }
+    return { nextNodeId: next };
   }
 
   const prompt = interpolateVariables(data.prompt ?? "", ctx.variables);
@@ -43,6 +56,7 @@ export const choiceExecutor: NodeExecutor = async (node, ctx) => {
   }
   await ctx.emit({
     kind: "request_input",
+    nodeId: node.id,
     prompt,
     choices: data.options ?? [],
   });

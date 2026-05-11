@@ -12,6 +12,7 @@ import {
   type Connection,
 } from "@xyflow/react";
 import { nanoid } from "nanoid";
+import { toast } from "sonner";
 import type { NodeKind } from "@/types/flow";
 
 interface HistorySnapshot {
@@ -26,9 +27,16 @@ interface CanvasState {
   selectedNodeId: string | null;
   activeNodeId: string | null;
   dirty: boolean;
+  /** Server `flows.updated_at` last applied to the canvas (for safe refresh sync). */
+  lastSyncedGraphRevision: number | null;
   history: HistorySnapshot[];
   future: HistorySnapshot[];
-  initialize: (flowId: string, nodes: Node[], edges: Edge[]) => void;
+  initialize: (
+    flowId: string,
+    nodes: Node[],
+    edges: Edge[],
+    graphRevision?: number | null
+  ) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   onNodesChange: (changes: NodeChange[]) => void;
@@ -37,6 +45,8 @@ interface CanvasState {
   addNode: (kind: NodeKind, position: { x: number; y: number }) => void;
   updateNodeData: (nodeId: string, data: Record<string, unknown>) => void;
   setSelectedNode: (id: string | null) => void;
+  /** Clears RF selection flags without marking the graph dirty (no autosave). */
+  clearCanvasSelection: () => void;
   setActiveNode: (id: string | null) => void;
   removeNode: (id: string) => void;
   clearDirty: () => void;
@@ -54,7 +64,13 @@ function defaultDataFor(kind: NodeKind): Record<string, unknown> {
     case "message":
       return { label: "Message", message: "Hello!" };
     case "capture":
-      return { label: "Capture", prompt: "What's your name?", variable: "name", suggestedReplies: [] };
+      return {
+        label: "Capture",
+        prompt: "What's your name?",
+        variable: "name",
+        suggestedReplies: [],
+        extractDisplayName: true,
+      };
     case "choice":
       return {
         label: "Choice",
@@ -116,10 +132,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   selectedNodeId: null,
   activeNodeId: null,
   dirty: false,
+  lastSyncedGraphRevision: null,
   history: [],
   future: [],
 
-  initialize: (flowId, nodes, edges) =>
+  initialize: (flowId, nodes, edges, graphRevision = null) =>
     set({
       flowId,
       nodes,
@@ -127,6 +144,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       selectedNodeId: null,
       activeNodeId: null,
       dirty: false,
+      lastSyncedGraphRevision: graphRevision ?? null,
       history: [],
       future: [],
     }),
@@ -156,6 +174,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })),
 
   addNode: (kind, position) => {
+    if (kind === "start" && get().nodes.some((n) => n.type === "start")) {
+      toast.info("This flow already has a Start node.");
+      return;
+    }
     get().takeSnapshot();
     const id = `${kind}_${nanoid(6)}`;
     const newNode: Node = {
@@ -180,6 +202,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })),
 
   setSelectedNode: (id) => set({ selectedNodeId: id }),
+
+  clearCanvasSelection: () =>
+    set((state) => ({
+      nodes: state.nodes.map((n) => ({ ...n, selected: false })),
+      selectedNodeId: null,
+    })),
+
   setActiveNode: (id) => set({ activeNodeId: id }),
 
   removeNode: (id) => {

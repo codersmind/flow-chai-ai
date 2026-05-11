@@ -14,6 +14,7 @@ export const projects = sqliteTable("projects", {
   globalInstructions: text("global_instructions"),
   personality: text("personality"),
   guardrails: text("guardrails"),
+  agentVariablesJson: text("agent_variables_json").notNull().default("[]"),
   createdAt: integer("created_at").notNull().default(sql`(unixepoch() * 1000)`),
   updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
 });

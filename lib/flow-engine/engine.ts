@@ -73,6 +73,21 @@ export async function executeFlow(options: ExecuteFlowOptions): Promise<{
           endReason: null,
         };
       }
+      if (!result.nextNodeId && !result.end) {
+        await ctx.emit({
+          kind: "trace",
+          trace: {
+            id: `trc_${Date.now()}`,
+            conversationId: options.conversationId,
+            nodeId: node.id,
+            nodeKind: node.type,
+            level: "warn",
+            message:
+              "Stopped here: no matching outgoing connection (check Condition/Choice handle wiring, or add a line from this node).",
+            createdAt: Date.now(),
+          },
+        });
+      }
       currentNodeId = result.nextNodeId;
       ctx.steps += 1;
     } catch (err) {

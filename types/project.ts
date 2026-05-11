@@ -1,3 +1,15 @@
+export type AgentVariableScope = "session" | "persistent";
+export type AgentVariableType = "text" | "number" | "boolean" | "any";
+
+export interface AgentVariable {
+  id: string;
+  name: string;
+  scope: AgentVariableScope;
+  type: AgentVariableType;
+  description?: string;
+  defaultValue?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -6,6 +18,7 @@ export interface Project {
   globalInstructions: string | null;
   personality: string | null;
   guardrails: string | null;
+  agentVariables: AgentVariable[];
   createdAt: number;
   updatedAt: number;
 }

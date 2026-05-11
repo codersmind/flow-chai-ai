@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentVariablesPayloadSchema } from "./agent-variables";
 
 export const flowNodeSchema = z.object({
   id: z.string(),
@@ -32,6 +33,7 @@ export const flowExportSchema = z.object({
     globalInstructions: z.string().optional(),
     personality: z.string().optional(),
     guardrails: z.string().optional(),
+    agentVariables: agentVariablesPayloadSchema.optional(),
   }),
   flows: z.array(
     z.object({

@@ -8,26 +8,42 @@ import { NodePalette } from "@/components/flow/palette";
 import { FlowInspector } from "@/components/flow/inspector";
 import { SimulatorPanel } from "@/components/simulator/simulator-panel";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, PanelRightClose, PanelRightOpen, Workflow } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { VariablesManager } from "@/components/projects/variables-manager";
+import type { AgentVariable } from "@/types/project";
+import { ArrowLeft, Database, PanelRightClose, PanelRightOpen, Workflow } from "lucide-react";
 
 interface BuilderShellProps {
   projectId: string;
   flowId: string;
   flowName: string;
+  /** DB `flows.updated_at` — used to sync the canvas after refresh when there are no local edits. */
+  graphRevision: number;
   flows: { id: string; name: string }[];
   initialNodes: Node[];
   initialEdges: Edge[];
+  agentVariables: AgentVariable[];
 }
 
 export function BuilderShell({
   projectId,
   flowId,
   flowName,
+  graphRevision,
   flows,
   initialNodes,
   initialEdges,
+  agentVariables,
 }: BuilderShellProps) {
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [variablesOpen, setVariablesOpen] = useState(false);
 
   return (
     <div className="flex h-screen flex-col bg-transparent p-3">
@@ -45,6 +61,24 @@ export function BuilderShell({
           <span className="text-sm font-semibold tracking-tight">{flowName}</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Dialog open={variablesOpen} onOpenChange={setVariablesOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="rounded-xl" title="Agent variables">
+                <Database className="mr-1 h-3.5 w-3.5" />
+                Variables
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto sm:max-w-3xl">
+              <DialogHeader className="sr-only">
+                <DialogTitle>Agent variables</DialogTitle>
+                <DialogDescription>
+                  Define names, types, defaults, and scopes for variables used in flows for this
+                  project.
+                </DialogDescription>
+              </DialogHeader>
+              <VariablesManager projectId={projectId} initialVariables={agentVariables} />
+            </DialogContent>
+          </Dialog>
           <Button
             size="sm"
             variant="outline"
@@ -89,6 +123,7 @@ export function BuilderShell({
         <main className="glass-panel flex-1 overflow-hidden rounded-2xl">
           <FlowCanvas
             flowId={flowId}
+            graphRevision={graphRevision}
             initialNodes={initialNodes}
             initialEdges={initialEdges}
             onNodeDoubleClick={() => setInspectorOpen(true)}
@@ -103,7 +138,7 @@ export function BuilderShell({
         ) : null}
 
         <aside className="glass-panel flex w-96 shrink-0 flex-col overflow-hidden rounded-2xl">
-          <SimulatorPanel flowId={flowId} />
+          <SimulatorPanel flowId={flowId} agentVariables={agentVariables} />
         </aside>
       </div>
     </div>

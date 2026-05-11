@@ -107,7 +107,7 @@ function MessageEditor({ data, update }: { data: MessageNodeData; update: (p: Re
         rows={6}
         value={data.message ?? ""}
         onChange={(e) => update({ message: e.target.value })}
-        placeholder="Hello! Use {{variables}} for interpolation."
+        placeholder="Hello! {{user_city}} — nested: {{api_result[0].name}} or {{api_result.0.name}}"
       />
     </div>
   );
@@ -135,11 +135,29 @@ function CaptureEditor({ data, update }: { data: CaptureNodeData; update: (p: Re
       <div>
         <Label>Suggested replies (one per line)</Label>
         <Textarea
-          rows={3}
+          rows={4}
           value={(data.suggestedReplies ?? []).join("\n")}
-          onChange={(e) =>
-            update({ suggestedReplies: e.target.value.split(/\n+/).filter(Boolean) })
-          }
+          onChange={(e) => update({ suggestedReplies: e.target.value.split("\n") })}
+          placeholder={"Rio\nAlex\nPress Enter between options"}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Each line becomes one quick-reply chip. Empty lines are ignored when the flow runs.
+        </p>
+      </div>
+      <div className="flex items-center justify-between gap-2 rounded-lg border p-3">
+        <div>
+          <Label htmlFor="capture-extract">Extract display name</Label>
+          <p className="text-xs text-muted-foreground">
+            Turns replies like &quot;i am Rio&quot; into just{" "}
+            <span className="font-mono">Rio</span> in{" "}
+            <span className="font-mono">{"{{variable}}"}</span> (Message: Hi{" "}
+            <span className="font-mono">{"{{name}}"}</span>).
+          </p>
+        </div>
+        <Switch
+          id="capture-extract"
+          checked={data.extractDisplayName === true}
+          onCheckedChange={(v) => update({ extractDisplayName: !!v })}
         />
       </div>
     </>

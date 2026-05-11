@@ -13,6 +13,10 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.format() }, { status: 400 });
   }
-  const project = await createProject(parsed.data);
+  const { agentVariables, ...rest } = parsed.data;
+  const project = await createProject({
+    ...rest,
+    agentVariables,
+  });
   return NextResponse.json({ project }, { status: 201 });
 }

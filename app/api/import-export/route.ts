@@ -5,6 +5,7 @@ import {
   createProject,
   createFlow,
   updateFlow,
+  updateProject,
 } from "@/lib/db/repositories/projects";
 import { flowExportSchema } from "@/validators/flow";
 import type { FlowExportPayload } from "@/types/flow";
@@ -26,6 +27,8 @@ export async function GET(req: NextRequest) {
       globalInstructions: project.globalInstructions ?? undefined,
       personality: project.personality ?? undefined,
       guardrails: project.guardrails ?? undefined,
+      agentVariables:
+        project.agentVariables.length > 0 ? project.agentVariables : undefined,
     },
     flows: flows.map((f) => ({
       id: f.id,
@@ -69,5 +72,10 @@ export async function POST(req: NextRequest) {
       await updateFlow(created.id, { graphJson: JSON.stringify(f.graph) });
     }
   }
-  return NextResponse.json({ project }, { status: 201 });
+  const vars = parsed.data.project.agentVariables;
+  if (vars && vars.length > 0) {
+    await updateProject(project.id, { agentVariables: vars });
+  }
+  const updated = await getProject(project.id);
+  return NextResponse.json({ project: updated ?? project }, { status: 201 });
 }

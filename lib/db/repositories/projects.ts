@@ -3,7 +3,8 @@ import { eq, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, dbReady } from "../client";
 import { projects, flows } from "../schema";
-import type { Project, Flow } from "@/types/project";
+import type { Project, Flow, AgentVariable } from "@/types/project";
+import { parseAgentVariablesJson } from "@/lib/variables/agent-variables";
 
 function toProject(row: typeof projects.$inferSelect): Project {
   return {
@@ -14,6 +15,7 @@ function toProject(row: typeof projects.$inferSelect): Project {
     globalInstructions: row.globalInstructions,
     personality: row.personality,
     guardrails: row.guardrails,
+    agentVariables: parseAgentVariablesJson(row.agentVariablesJson ?? "[]"),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -51,6 +53,7 @@ export async function createProject(input: {
   globalInstructions?: string;
   personality?: string;
   guardrails?: string;
+  agentVariables?: AgentVariable[];
 }): Promise<Project> {
   await dbReady;
   const now = Date.now();
@@ -63,6 +66,7 @@ export async function createProject(input: {
     globalInstructions: input.globalInstructions ?? null,
     personality: input.personality ?? null,
     guardrails: input.guardrails ?? null,
+    agentVariablesJson: JSON.stringify(input.agentVariables ?? []),
     createdAt: now,
     updatedAt: now,
   });
@@ -113,10 +117,18 @@ export async function updateProject(
 ): Promise<Project | null> {
   await dbReady;
   const now = Date.now();
-  await db
-    .update(projects)
-    .set({ ...patch, updatedAt: now })
-    .where(eq(projects.id, id));
+  const row: Partial<typeof projects.$inferInsert> = { updatedAt: now };
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.description !== undefined) row.description = patch.description;
+  if (patch.defaultModel !== undefined) row.defaultModel = patch.defaultModel;
+  if (patch.globalInstructions !== undefined)
+    row.globalInstructions = patch.globalInstructions;
+  if (patch.personality !== undefined) row.personality = patch.personality;
+  if (patch.guardrails !== undefined) row.guardrails = patch.guardrails;
+  if (patch.agentVariables !== undefined) {
+    row.agentVariablesJson = JSON.stringify(patch.agentVariables);
+  }
+  await db.update(projects).set(row).where(eq(projects.id, id));
   return getProject(id);
 }
 

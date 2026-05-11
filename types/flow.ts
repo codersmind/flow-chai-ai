@@ -1,3 +1,5 @@
+import type { AgentVariable } from "./project";
+
 export type NodeKind =
   | "start"
   | "message"
@@ -33,6 +35,11 @@ export interface CaptureNodeData {
   prompt: string;
   variable: string;
   suggestedReplies?: string[];
+  /**
+   * When on, replies like "i am Rio" or "my name is Rio" store just "Rio" in the variable
+   * (so a Message like `Hi {{name}}` reads naturally). If no phrase matches, the full text is stored.
+   */
+  extractDisplayName?: boolean;
 }
 
 export interface ChoiceOption {
@@ -151,6 +158,7 @@ export interface FlowExportPayload {
     globalInstructions?: string;
     personality?: string;
     guardrails?: string;
+    agentVariables?: AgentVariable[];
   };
   flows: {
     id: string;

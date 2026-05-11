@@ -6,6 +6,7 @@ import type { ApiCallNodeData } from "@/types/flow";
 
 export const apiCallExecutor: NodeExecutor = async (node, ctx) => {
   const data = node.data as ApiCallNodeData;
+  const outputKey = (data.outputVariable ?? "").trim();
   const url = interpolateVariables(data.url ?? "", ctx.variables);
   const headers: Record<string, string> = {};
   for (const [k, v] of Object.entries(data.headers ?? {})) {
@@ -19,9 +20,9 @@ export const apiCallExecutor: NodeExecutor = async (node, ctx) => {
     const res = await fetch(url, { method: data.method, headers, body });
     const text = await res.text();
     const parsed = safeJsonParse<unknown>(text, text);
-    if (data.outputVariable) {
-      ctx.variables[data.outputVariable] = parsed;
-      await ctx.emit({ kind: "variable_set", variable: data.outputVariable, value: parsed });
+    if (outputKey) {
+      ctx.variables[outputKey] = parsed;
+      await ctx.emit({ kind: "variable_set", variable: outputKey, value: parsed });
     }
     await ctx.emit({
       kind: "trace",

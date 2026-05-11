@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentVariablesPayloadSchema } from "./agent-variables";
 
 export const projectFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(120),
@@ -7,6 +8,7 @@ export const projectFormSchema = z.object({
   globalInstructions: z.string().max(8000).optional(),
   personality: z.string().max(2000).optional(),
   guardrails: z.string().max(2000).optional(),
+  agentVariables: agentVariablesPayloadSchema.optional(),
 });
 
 export type ProjectFormInput = z.infer<typeof projectFormSchema>;

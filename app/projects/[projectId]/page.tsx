@@ -8,6 +8,7 @@ import { AppNav } from "@/components/layout/app-nav";
 import { ProjectSettingsForm } from "@/components/projects/project-settings";
 import { FlowList } from "@/components/projects/flow-list";
 import { KbManager } from "@/components/projects/kb-manager";
+import { VariablesManager } from "@/components/projects/variables-manager";
 import { ExportProjectButton } from "@/components/projects/export-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,7 @@ export default async function ProjectPage({ params }: PageProps) {
             <TabsTrigger value="flows">Flows</TabsTrigger>
             <TabsTrigger value="settings">Agent settings</TabsTrigger>
             <TabsTrigger value="kb">Knowledge base</TabsTrigger>
+            <TabsTrigger value="variables">Variables</TabsTrigger>
           </TabsList>
           <TabsContent value="flows" className="pt-4">
             <FlowList projectId={projectId} flows={flows} />
@@ -64,6 +66,9 @@ export default async function ProjectPage({ params }: PageProps) {
           </TabsContent>
           <TabsContent value="kb" className="pt-4">
             <KbManager projectId={projectId} />
+          </TabsContent>
+          <TabsContent value="variables" className="pt-4">
+            <VariablesManager projectId={projectId} initialVariables={project.agentVariables} />
           </TabsContent>
         </Tabs>
       </main>
