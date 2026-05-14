@@ -30,6 +30,8 @@ export const flows = sqliteTable(
     graphJson: text("graph_json").notNull().default("{\"nodes\":[],\"edges\":[]}"),
     version: integer("version").notNull().default(1),
     isStart: integer("is_start", { mode: "boolean" }).notNull().default(false),
+    embedEnabled: integer("embed_enabled", { mode: "boolean" }).notNull().default(false),
+    embedToken: text("embed_token"),
     createdAt: integer("created_at").notNull().default(sql`(unixepoch() * 1000)`),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
   },

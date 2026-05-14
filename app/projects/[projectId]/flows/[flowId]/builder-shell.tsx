@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { VariablesManager } from "@/components/projects/variables-manager";
+import { EmbedPublishDialog } from "@/components/embed/embed-publish-dialog";
 import type { AgentVariable } from "@/types/project";
 import { ArrowLeft, Database, PanelRightClose, PanelRightOpen, Workflow } from "lucide-react";
 
@@ -24,6 +25,8 @@ interface BuilderShellProps {
   projectId: string;
   flowId: string;
   flowName: string;
+  embedEnabled: boolean;
+  embedToken: string | null;
   /** DB `flows.updated_at` — used to sync the canvas after refresh when there are no local edits. */
   graphRevision: number;
   flows: { id: string; name: string }[];
@@ -36,6 +39,8 @@ export function BuilderShell({
   projectId,
   flowId,
   flowName,
+  embedEnabled,
+  embedToken,
   graphRevision,
   flows,
   initialNodes,
@@ -79,6 +84,11 @@ export function BuilderShell({
               <VariablesManager projectId={projectId} initialVariables={agentVariables} />
             </DialogContent>
           </Dialog>
+          <EmbedPublishDialog
+            flowId={flowId}
+            initialEnabled={embedEnabled}
+            initialToken={embedToken}
+          />
           <Button
             size="sm"
             variant="outline"

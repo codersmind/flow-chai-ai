@@ -29,6 +29,8 @@ export default async function FlowBuilderPage({ params }: PageProps) {
       projectId={projectId}
       flowId={flowId}
       flowName={flow.name}
+      embedEnabled={flow.embedEnabled}
+      embedToken={flow.embedToken}
       graphRevision={flow.updatedAt}
       flows={flows.map((f) => ({ id: f.id, name: f.name }))}
       initialNodes={initialNodes}

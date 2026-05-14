@@ -38,6 +38,8 @@ async function ensureSchema(client: ReturnType<typeof createClient>) {
       graph_json TEXT NOT NULL DEFAULT '{"nodes":[],"edges":[]}',
       version INTEGER NOT NULL DEFAULT 1,
       is_start INTEGER NOT NULL DEFAULT 0,
+      embed_enabled INTEGER NOT NULL DEFAULT 0,
+      embed_token TEXT,
       created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
       updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
     );
@@ -128,6 +130,23 @@ async function ensureSchema(client: ReturnType<typeof createClient>) {
   for (const col of appCols) {
     const pr = await client.execute(
       `SELECT COUNT(*) AS c FROM pragma_table_info('app_settings') WHERE name = '${col.name}'`
+    );
+    const prRow = pr.rows[0] as unknown as { c: number } | undefined;
+    if (!prRow || Number(prRow.c) === 0) {
+      await client.execute(col.ddl);
+    }
+  }
+
+  const flowEmbedCols: { name: string; ddl: string }[] = [
+    {
+      name: "embed_enabled",
+      ddl: "ALTER TABLE flows ADD COLUMN embed_enabled INTEGER NOT NULL DEFAULT 0",
+    },
+    { name: "embed_token", ddl: "ALTER TABLE flows ADD COLUMN embed_token TEXT" },
+  ];
+  for (const col of flowEmbedCols) {
+    const pr = await client.execute(
+      `SELECT COUNT(*) AS c FROM pragma_table_info('flows') WHERE name = '${col.name}'`
     );
     const prRow = pr.rows[0] as unknown as { c: number } | undefined;
     if (!prRow || Number(prRow.c) === 0) {

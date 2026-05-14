@@ -11,12 +11,27 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const { flowId } = await params;
-  const body = (await req.json()) as FlowExecuteJsonBody;
+  const body = (await req.json()) as FlowExecuteJsonBody & { embedToken?: string };
 
   const flow = await getFlow(flowId);
   if (!flow) {
     return new Response(JSON.stringify({ error: "Flow not found" }), {
       status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!flow.embedEnabled || !flow.embedToken) {
+    return new Response(JSON.stringify({ error: "Embed not enabled for this flow" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const token = typeof body.embedToken === "string" ? body.embedToken.trim() : "";
+  if (!token || token !== flow.embedToken) {
+    return new Response(JSON.stringify({ error: "Invalid embed token" }), {
+      status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
@@ -31,10 +46,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     });
   }
 
+  const { embedToken: _omit, ...rest } = body;
   return createFlowSseResponse({
     projectId: flow.projectId,
     flowId: flow.id,
     graph,
-    body,
+    body: rest,
   });
 }

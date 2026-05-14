@@ -30,6 +30,9 @@ export interface Flow {
   graphJson: string;
   version: number;
   isStart: boolean;
+  /** When true, `/embed/:flowId` + `/api/embed/:flowId/execute` accept `embedToken`. */
+  embedEnabled: boolean;
+  embedToken: string | null;
   createdAt: number;
   updatedAt: number;
 }

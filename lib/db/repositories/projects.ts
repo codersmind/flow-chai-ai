@@ -29,6 +29,8 @@ function toFlow(row: typeof flows.$inferSelect): Flow {
     graphJson: row.graphJson,
     version: row.version,
     isStart: row.isStart,
+    embedEnabled: row.embedEnabled ?? false,
+    embedToken: row.embedToken ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -104,6 +106,8 @@ export async function createProject(input: {
     name: "Main Flow",
     graphJson: JSON.stringify(startGraph),
     isStart: true,
+    embedEnabled: false,
+    embedToken: null,
     createdAt: now,
     updatedAt: now,
   });
@@ -176,6 +180,8 @@ export async function createFlow(input: {
       edges: [],
     }),
     isStart: false,
+    embedEnabled: false,
+    embedToken: null,
     createdAt: now,
     updatedAt: now,
   });
@@ -184,14 +190,21 @@ export async function createFlow(input: {
 
 export async function updateFlow(
   id: string,
-  patch: { name?: string; graphJson?: string }
+  patch: {
+    name?: string;
+    graphJson?: string;
+    embedEnabled?: boolean;
+    embedToken?: string | null;
+  }
 ): Promise<Flow | null> {
   await dbReady;
   const now = Date.now();
-  await db
-    .update(flows)
-    .set({ ...patch, updatedAt: now })
-    .where(eq(flows.id, id));
+  const row: Partial<typeof flows.$inferInsert> = { updatedAt: now };
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.graphJson !== undefined) row.graphJson = patch.graphJson;
+  if (patch.embedEnabled !== undefined) row.embedEnabled = patch.embedEnabled;
+  if (patch.embedToken !== undefined) row.embedToken = patch.embedToken;
+  await db.update(flows).set(row).where(eq(flows.id, id));
   return getFlow(id);
 }
 
