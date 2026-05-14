@@ -1,6 +1,9 @@
 import "server-only";
+import type { LanguageModel } from "ai";
 import { generateText, streamText } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { getDefaultModel, getOllamaProvider, listOllamaModels } from "./ollama";
+import { getSettings } from "@/lib/db/repositories/settings";
 
 export interface ChatOptions {
   model?: string;
@@ -12,7 +15,13 @@ export interface ChatOptions {
   prompt: string;
 }
 
-async function resolveModelName(requested?: string): Promise<string> {
+export async function getDefaultChatModelId(): Promise<string> {
+  const s = await getSettings();
+  if (s.aiProvider === "openai") return s.openaiDefaultModel;
+  return getDefaultModel();
+}
+
+async function resolveOllamaModelName(requested?: string): Promise<string> {
   const defaultModel = await getDefaultModel();
   const preferred = requested?.trim() || defaultModel.trim();
   const models = await listOllamaModels();
@@ -30,10 +39,33 @@ async function resolveModelName(requested?: string): Promise<string> {
   return byBase ?? preferred;
 }
 
-export async function generateOllama(opts: ChatOptions): Promise<string> {
+export async function getChatLanguageModel(opts: {
+  model?: string;
+  jsonMode?: boolean;
+}): Promise<LanguageModel> {
+  const settings = await getSettings();
+  if (settings.aiProvider === "openai") {
+    const apiKey = (settings.openaiApiKey?.trim() || process.env.OPENAI_API_KEY || "").trim();
+    if (!apiKey) {
+      throw new Error(
+        "OpenAI is selected but no API key is configured. Add it in Settings or set OPENAI_API_KEY in the environment."
+      );
+    }
+    const baseURL = settings.openaiBaseUrl?.trim();
+    const openai = createOpenAI({
+      apiKey,
+      baseURL: baseURL && baseURL.length > 0 ? baseURL : undefined,
+    });
+    const id = (opts.model?.trim() || settings.openaiDefaultModel || "gpt-4o-mini").trim();
+    return openai(id, opts.jsonMode ? { structuredOutputs: true } : undefined);
+  }
   const provider = await getOllamaProvider();
-  const modelName = await resolveModelName(opts.model);
-  const model = provider(modelName, opts.jsonMode ? { structuredOutputs: true } : undefined);
+  const modelName = await resolveOllamaModelName(opts.model);
+  return provider(modelName, opts.jsonMode ? { structuredOutputs: true } : undefined);
+}
+
+export async function generateOllama(opts: ChatOptions): Promise<string> {
+  const model = await getChatLanguageModel({ model: opts.model, jsonMode: opts.jsonMode });
   const result = await generateText({
     model,
     system: opts.systemPrompt,
@@ -46,9 +78,7 @@ export async function generateOllama(opts: ChatOptions): Promise<string> {
 }
 
 export async function streamOllama(opts: ChatOptions) {
-  const provider = await getOllamaProvider();
-  const modelName = await resolveModelName(opts.model);
-  const model = provider(modelName, opts.jsonMode ? { structuredOutputs: true } : undefined);
+  const model = await getChatLanguageModel({ model: opts.model, jsonMode: opts.jsonMode });
   return streamText({
     model,
     system: opts.systemPrompt,

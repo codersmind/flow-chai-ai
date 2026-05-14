@@ -24,6 +24,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type {
   ApiCallNodeData,
+  CaptureNameCleanup,
   CaptureNodeData,
   ChoiceNodeData,
   ConditionNodeData,
@@ -144,21 +145,38 @@ function CaptureEditor({ data, update }: { data: CaptureNodeData; update: (p: Re
           Each line becomes one quick-reply chip. Empty lines are ignored when the flow runs.
         </p>
       </div>
-      <div className="flex items-center justify-between gap-2 rounded-lg border p-3">
+      <div className="space-y-2 rounded-lg border p-3">
         <div>
-          <Label htmlFor="capture-extract">Extract display name</Label>
-          <p className="text-xs text-muted-foreground">
-            Turns replies like &quot;i am Rio&quot; into just{" "}
-            <span className="font-mono">Rio</span> in{" "}
-            <span className="font-mono">{"{{variable}}"}</span> (Message: Hi{" "}
-            <span className="font-mono">{"{{name}}"}</span>).
+          <Label htmlFor="capture-cleanup">Save reply as</Label>
+          <Select
+            value={
+              (data.nameCleanup as string | undefined) === "patterns"
+                ? "ai"
+                : (data.nameCleanup ?? (data.extractDisplayName === true ? "ai" : "none"))
+            }
+            onValueChange={(v) =>
+              update({
+                nameCleanup: v as CaptureNameCleanup,
+                extractDisplayName: undefined,
+              })
+            }
+          >
+            <SelectTrigger id="capture-cleanup" className="mt-1.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Full text (no cleanup)</SelectItem>
+              <SelectItem value="ai">AI: smart extract (uses Settings → Chat provider)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            <strong>AI</strong> uses your <span className="font-mono">Prompt</span> and <span className="font-mono">
+              Variable
+            </span>{" "}
+            as context: names stay concise; addresses keep area, commas, and city (e.g. Shambazar, Kolkata). If the
+            model fails, name-like variables use phrase rules; others keep the trimmed reply.
           </p>
         </div>
-        <Switch
-          id="capture-extract"
-          checked={data.extractDisplayName === true}
-          onCheckedChange={(v) => update({ extractDisplayName: !!v })}
-        />
       </div>
     </>
   );

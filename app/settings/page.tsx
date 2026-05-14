@@ -11,7 +11,8 @@ export default async function SettingsPage() {
       <main className="mx-auto max-w-2xl p-6">
         <h1 className="mb-1 text-2xl font-semibold">Settings</h1>
         <p className="mb-6 text-sm text-muted-foreground">
-          Configure local model and voice defaults. All processing stays on this machine.
+          Use local Ollama or an OpenAI-compatible API key for chat and flow LLM steps. Voice and
+          embeddings still use your local Ollama URL when you pick OpenAI for chat.
         </p>
         <SettingsForm initialSettings={settings} initialModels={models} />
       </main>

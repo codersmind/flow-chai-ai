@@ -69,7 +69,7 @@ function defaultDataFor(kind: NodeKind): Record<string, unknown> {
         prompt: "What's your name?",
         variable: "name",
         suggestedReplies: [],
-        extractDisplayName: true,
+        nameCleanup: "ai",
       };
     case "choice":
       return {

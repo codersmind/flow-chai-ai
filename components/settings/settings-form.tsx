@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { listVoices } from "@/lib/tts/browser";
-import type { AppSettings } from "@/types/project";
+import type { AiProvider, AppSettings } from "@/types/project";
 
 interface SettingsFormProps {
   initialSettings: AppSettings;
@@ -25,6 +25,8 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
   const [models, setModels] = useState<string[]>(initialModels);
   const [voices, setVoices] = useState<{ name: string; lang: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [openaiKeyTouched, setOpenaiKeyTouched] = useState(false);
+  const skipNextProviderRefresh = useRef(true);
 
   useEffect(() => {
     const update = () => {
@@ -36,26 +38,46 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
     }
   }, []);
 
-  const refreshModels = async () => {
+  const refreshModels = async (silent?: boolean) => {
     try {
       const res = await fetch("/api/ai/models", { cache: "no-store" });
-      const data = (await res.json()) as { models: string[] };
+      const data = (await res.json()) as { models: string[]; provider?: AiProvider };
       setModels(data.models);
-      toast.success(`Loaded ${data.models.length} model(s)`);
+      if (!silent) {
+        toast.success(
+          data.provider === "openai"
+            ? `Loaded ${data.models.length} OpenAI model id(s)`
+            : `Loaded ${data.models.length} Ollama model(s)`
+        );
+      }
     } catch {
-      toast.error("Failed to refresh models");
+      if (!silent) toast.error("Failed to refresh model list");
     }
   };
+
+  useEffect(() => {
+    if (skipNextProviderRefresh.current) {
+      skipNextProviderRefresh.current = false;
+      return;
+    }
+    void refreshModels(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when provider changes
+  }, [settings.aiProvider]);
 
   const onSave = async () => {
     setSaving(true);
     try {
+      const body: Record<string, unknown> = { ...settings };
+      if (!openaiKeyTouched) delete body.openaiApiKey;
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Save failed");
+      const data = (await res.json()) as { settings?: AppSettings };
+      if (data.settings) setSettings(data.settings);
+      setOpenaiKeyTouched(false);
       toast.success("Settings saved");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save failed";
@@ -66,54 +88,156 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <Label htmlFor="ollama-url">Ollama base URL</Label>
-        <Input
-          id="ollama-url"
-          value={settings.ollamaBaseUrl}
-          onChange={(e) => setSettings({ ...settings, ollamaBaseUrl: e.target.value })}
-        />
+        <Label htmlFor="ai-provider">Chat / LLM provider</Label>
+        <Select
+          value={settings.aiProvider}
+          onValueChange={(v) =>
+            setSettings({ ...settings, aiProvider: v as AiProvider })
+          }
+        >
+          <SelectTrigger id="ai-provider" className="mt-1.5">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ollama">Local Ollama</SelectItem>
+            <SelectItem value="openai">OpenAI API</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Flow LLM nodes and the AI chat stream use this provider. Knowledge-base embeddings still use
+          Ollama below.
+        </p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor="default-model">Default model</Label>
-          {models.length > 0 ? (
-            <Select
-              value={settings.ollamaDefaultModel}
-              onValueChange={(v) => setSettings({ ...settings, ollamaDefaultModel: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
+
+      {settings.aiProvider === "openai" ? (
+        <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+          <h2 className="text-sm font-semibold">OpenAI</h2>
+          <div>
+            <Label htmlFor="openai-key">API key</Label>
             <Input
-              id="default-model"
-              value={settings.ollamaDefaultModel}
-              onChange={(e) => setSettings({ ...settings, ollamaDefaultModel: e.target.value })}
+              id="openai-key"
+              type="password"
+              autoComplete="off"
+              value={settings.openaiApiKey ?? ""}
+              onChange={(e) => {
+                setOpenaiKeyTouched(true);
+                setSettings({ ...settings, openaiApiKey: e.target.value || null });
+              }}
+              placeholder="sk-… or leave empty and set OPENAI_API_KEY in .env"
             />
-          )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              A key is only saved when you type here. Otherwise the app keeps the stored key or
+              uses <span className="font-mono">OPENAI_API_KEY</span> from the environment.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="openai-base">Base URL (optional)</Label>
+            <Input
+              id="openai-base"
+              value={settings.openaiBaseUrl ?? ""}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  openaiBaseUrl: e.target.value.trim() || null,
+                })
+              }
+              placeholder="https://api.openai.com/v1 (default when empty)"
+            />
+          </div>
+          <div>
+            <Label htmlFor="openai-model">Default model</Label>
+            {models.length > 0 ? (
+              <Select
+                value={settings.openaiDefaultModel}
+                onValueChange={(v) => setSettings({ ...settings, openaiDefaultModel: v })}
+              >
+                <SelectTrigger id="openai-model" className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="openai-model"
+                className="mt-1.5"
+                value={settings.openaiDefaultModel}
+                onChange={(e) =>
+                  setSettings({ ...settings, openaiDefaultModel: e.target.value })
+                }
+                placeholder="gpt-4o-mini"
+              />
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Per-flow LLM nodes can override with their own model field.
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refreshModels()}>
+            Reload model list
+          </Button>
         </div>
-        <div>
-          <Label htmlFor="embed-model">Embedding model</Label>
-          <Input
-            id="embed-model"
-            value={settings.ollamaEmbeddingModel}
-            onChange={(e) => setSettings({ ...settings, ollamaEmbeddingModel: e.target.value })}
-          />
+      ) : (
+        <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+          <h2 className="text-sm font-semibold">Ollama</h2>
+          <div>
+            <Label htmlFor="ollama-url">Ollama base URL</Label>
+            <Input
+              id="ollama-url"
+              value={settings.ollamaBaseUrl}
+              onChange={(e) => setSettings({ ...settings, ollamaBaseUrl: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="default-model">Default model</Label>
+              {models.length > 0 ? (
+                <Select
+                  value={settings.ollamaDefaultModel}
+                  onValueChange={(v) => setSettings({ ...settings, ollamaDefaultModel: v })}
+                >
+                  <SelectTrigger id="default-model">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="default-model"
+                  value={settings.ollamaDefaultModel}
+                  onChange={(e) => setSettings({ ...settings, ollamaDefaultModel: e.target.value })}
+                />
+              )}
+            </div>
+            <div>
+              <Label htmlFor="embed-model">Embedding model</Label>
+              <Input
+                id="embed-model"
+                value={settings.ollamaEmbeddingModel}
+                onChange={(e) =>
+                  setSettings({ ...settings, ollamaEmbeddingModel: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refreshModels()}>
+            Refresh model list from Ollama
+          </Button>
         </div>
-      </div>
-      <Button variant="outline" onClick={refreshModels}>
-        Refresh model list from Ollama
-      </Button>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="stt-lang">STT language</Label>
@@ -132,7 +256,7 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
               setSettings({ ...settings, ttsVoice: v === "_default" ? null : v })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger id="tts-voice">
               <SelectValue placeholder="Browser default" />
             </SelectTrigger>
             <SelectContent>
@@ -146,6 +270,7 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
           </Select>
         </div>
       </div>
+
       <Button onClick={onSave} disabled={saving}>
         {saving ? "Saving..." : "Save settings"}
       </Button>

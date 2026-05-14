@@ -34,10 +34,18 @@ export interface Flow {
   updatedAt: number;
 }
 
+export type AiProvider = "ollama" | "openai";
+
 export interface AppSettings {
+  aiProvider: AiProvider;
   ollamaBaseUrl: string;
   ollamaDefaultModel: string;
   ollamaEmbeddingModel: string;
+  /** Stored in DB for local use; falls back to `OPENAI_API_KEY` env when empty. */
+  openaiApiKey: string | null;
+  openaiDefaultModel: string;
+  /** Optional (e.g. Azure OpenAI proxy). Leave empty for api.openai.com. */
+  openaiBaseUrl: string | null;
   ttsVoice: string | null;
   sttLanguage: string;
 }

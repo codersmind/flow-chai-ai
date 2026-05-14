@@ -30,15 +30,19 @@ export interface MessageNodeData {
   message: string;
 }
 
+/** How the capture node stores the user reply into the variable (on resume). */
+export type CaptureNameCleanup = "none" | "ai";
+
 export interface CaptureNodeData {
   label: string;
   prompt: string;
   variable: string;
   suggestedReplies?: string[];
   /**
-   * When on, replies like "i am Rio" or "my name is Rio" store just "Rio" in the variable
-   * (so a Message like `Hi {{name}}` reads naturally). If no phrase matches, the full text is stored.
+   * none = full reply; ai = ask the configured chat model to extract the answer using the capture prompt and variable name as context (names, addresses, etc.).
    */
+  nameCleanup?: CaptureNameCleanup;
+  /** @deprecated use `nameCleanup: "ai"` */
   extractDisplayName?: boolean;
 }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/db/repositories/settings";
 import { listOllamaModels } from "@/lib/ai/ollama";
-import { settingsSchema } from "@/validators/settings";
+import { settingsPatchSchema } from "@/validators/settings";
 
 export async function GET() {
   const [settings, models] = await Promise.all([getSettings(), listOllamaModels()]);
@@ -10,7 +10,7 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   const body = await req.json();
-  const parsed = settingsSchema.partial().safeParse(body);
+  const parsed = settingsPatchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.format() }, { status: 400 });
   }

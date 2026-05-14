@@ -84,9 +84,13 @@ async function ensureSchema(client: ReturnType<typeof createClient>) {
     CREATE INDEX IF NOT EXISTS trace_events_conversation_idx ON trace_events(conversation_id);
     CREATE TABLE IF NOT EXISTS app_settings (
       id TEXT PRIMARY KEY DEFAULT 'singleton',
+      ai_provider TEXT NOT NULL DEFAULT 'ollama',
       ollama_base_url TEXT NOT NULL DEFAULT 'http://localhost:11434',
       ollama_default_model TEXT NOT NULL DEFAULT 'llama3.2',
       ollama_embedding_model TEXT NOT NULL DEFAULT 'nomic-embed-text',
+      openai_api_key TEXT,
+      openai_default_model TEXT NOT NULL DEFAULT 'gpt-4o-mini',
+      openai_base_url TEXT,
       tts_voice TEXT,
       stt_language TEXT NOT NULL DEFAULT 'en-US',
       updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
@@ -107,6 +111,28 @@ async function ensureSchema(client: ReturnType<typeof createClient>) {
     await client.execute(
       "ALTER TABLE projects ADD COLUMN agent_variables_json TEXT NOT NULL DEFAULT '[]'"
     );
+  }
+
+  const appCols: { name: string; ddl: string }[] = [
+    {
+      name: "ai_provider",
+      ddl: "ALTER TABLE app_settings ADD COLUMN ai_provider TEXT NOT NULL DEFAULT 'ollama'",
+    },
+    { name: "openai_api_key", ddl: "ALTER TABLE app_settings ADD COLUMN openai_api_key TEXT" },
+    {
+      name: "openai_default_model",
+      ddl: "ALTER TABLE app_settings ADD COLUMN openai_default_model TEXT NOT NULL DEFAULT 'gpt-4o-mini'",
+    },
+    { name: "openai_base_url", ddl: "ALTER TABLE app_settings ADD COLUMN openai_base_url TEXT" },
+  ];
+  for (const col of appCols) {
+    const pr = await client.execute(
+      `SELECT COUNT(*) AS c FROM pragma_table_info('app_settings') WHERE name = '${col.name}'`
+    );
+    const prRow = pr.rows[0] as unknown as { c: number } | undefined;
+    if (!prRow || Number(prRow.c) === 0) {
+      await client.execute(col.ddl);
+    }
   }
 }
 

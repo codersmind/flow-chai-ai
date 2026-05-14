@@ -20,15 +20,19 @@ export function ConditionNode(props: NodeProps) {
         <p className="mb-2 text-xs text-muted-foreground">
           {data.mode === "llm_router" ? "LLM router" : `${(data.rules ?? []).length} rule(s)`}
         </p>
-        <ul className="space-y-1 text-xs">
-          {routes.map((r, i) => (
-            <li key={r.id} className="relative rounded border bg-background px-2 py-1">
-              {r.label}
+        <ul className="space-y-1.5 text-xs">
+          {routes.map((r) => (
+            <li
+              key={r.id}
+              className="relative flex min-h-[2.25rem] items-center rounded-md border border-border bg-background py-1.5 pl-2.5 pr-2"
+            >
+              <span className="min-w-0 flex-1 pr-2 leading-snug">{r.label}</span>
               <Handle
                 type="source"
                 position={Position.Right}
                 id={r.id}
-                style={{ top: 30 + i * 28 }}
+                className="!absolute !left-auto top-1/2 h-2.5 w-2.5 -translate-y-1/2"
+                style={{ right: -6 }}
               />
             </li>
           ))}

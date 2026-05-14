@@ -1,12 +1,18 @@
 import { NextRequest } from "next/server";
 import { streamText } from "ai";
-import { getDefaultModel, getOllamaProvider, listOllamaModels } from "@/lib/ai/ollama";
+import { getChatLanguageModel, getDefaultChatModelId } from "@/lib/ai/stream";
+import { getSettings } from "@/lib/db/repositories/settings";
+import { listOllamaModels } from "@/lib/ai/ollama";
 
 export const runtime = "nodejs";
 
-async function resolveModelName(requested?: string): Promise<string> {
-  const fallback = await getDefaultModel();
+async function resolveModelId(requested?: string): Promise<string> {
+  const settings = await getSettings();
+  const fallback = await getDefaultChatModelId();
   const preferred = requested?.trim() || fallback.trim();
+  if (settings.aiProvider === "openai") {
+    return preferred;
+  }
   const models = await listOllamaModels();
   if (models.length === 0) return preferred;
   if (models.includes(preferred)) return preferred;
@@ -28,10 +34,10 @@ export async function POST(req: NextRequest) {
     model?: string;
     temperature?: number;
   };
-  const provider = await getOllamaProvider();
-  const modelName = await resolveModelName(body.model);
+  const modelId = await resolveModelId(body.model);
+  const model = await getChatLanguageModel({ model: modelId });
   const result = streamText({
-    model: provider(modelName),
+    model,
     messages: body.messages,
     temperature: body.temperature ?? 0.7,
   });

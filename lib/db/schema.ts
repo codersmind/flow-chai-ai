@@ -116,9 +116,13 @@ export const traceEvents = sqliteTable(
 
 export const appSettings = sqliteTable("app_settings", {
   id: text("id").primaryKey().default("singleton"),
+  aiProvider: text("ai_provider").notNull().default("ollama"),
   ollamaBaseUrl: text("ollama_base_url").notNull().default("http://localhost:11434"),
   ollamaDefaultModel: text("ollama_default_model").notNull().default("llama3.2"),
   ollamaEmbeddingModel: text("ollama_embedding_model").notNull().default("nomic-embed-text"),
+  openaiApiKey: text("openai_api_key"),
+  openaiDefaultModel: text("openai_default_model").notNull().default("gpt-4o-mini"),
+  openaiBaseUrl: text("openai_base_url"),
   ttsVoice: text("tts_voice"),
   sttLanguage: text("stt_language").notNull().default("en-US"),
   updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
