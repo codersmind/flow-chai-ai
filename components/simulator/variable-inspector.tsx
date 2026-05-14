@@ -27,6 +27,13 @@ export function VariableInspector({ definitions = [] }: VariableInspectorProps) 
   return (
     <ScrollArea className="h-full">
       <div className="space-y-4 p-3">
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Built-ins on each user message: <span className="font-mono">user_message</span>,{" "}
+          <span className="font-mono">last_user_message</span>,{" "}
+          <span className="font-mono">last_utterance</span> (Voiceflow-style raw line). After a Capture into
+          another variable, <span className="font-mono">last_utterance</span> stays raw for{" "}
+          <span className="font-mono">{"{{last_utterance}}"}</span> in Set Variable.
+        </p>
         {definitions.length > 0 ? (
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

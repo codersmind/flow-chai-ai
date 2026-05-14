@@ -20,6 +20,9 @@ export function SetVariableNode(props: NodeProps) {
           {(data.assignments ?? []).slice(0, 4).map((a) => (
             <li key={a.id} className="font-mono text-muted-foreground">
               {a.variable || "?"} = {a.value || ""}
+              {a.valueCleanup === "ai" ? (
+                <span className="text-amber-700 dark:text-amber-400"> · AI</span>
+              ) : null}
             </li>
           ))}
         </ul>

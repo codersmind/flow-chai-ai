@@ -22,6 +22,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     variables?: Record<string, unknown>;
     resumeFromNodeId?: string;
     userMessage?: string;
+    conversationTranscript?: unknown;
   };
 
   const flow = await getFlow(flowId);
@@ -52,9 +53,28 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     { ...(body.variables ?? {}) },
     defs
   );
+
+  let conversationTranscript:
+    | { role: "user" | "assistant" | "system"; content: string }[]
+    | undefined;
+  if (Array.isArray(body.conversationTranscript)) {
+    const lines: { role: "user" | "assistant" | "system"; content: string }[] = [];
+    for (const item of body.conversationTranscript) {
+      if (!item || typeof item !== "object") continue;
+      const o = item as Record<string, unknown>;
+      const role = o.role === "assistant" || o.role === "system" || o.role === "user" ? o.role : null;
+      const content = typeof o.content === "string" ? o.content.trim() : "";
+      if (!role || !content) continue;
+      lines.push({ role, content: content.slice(0, 4000) });
+    }
+    conversationTranscript = lines.slice(-32);
+  }
   if (typeof body.userMessage === "string" && body.userMessage.trim().length > 0) {
-    runtimeVariables.user_message = body.userMessage;
-    runtimeVariables.last_user_message = body.userMessage;
+    const raw = body.userMessage;
+    runtimeVariables.user_message = raw;
+    runtimeVariables.last_user_message = raw;
+    /** Voiceflow-style alias for the latest user line (Listen / last reply). */
+    runtimeVariables.last_utterance = raw;
   }
 
   const encoder = new TextEncoder();
@@ -88,6 +108,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           variables: runtimeVariables,
           resumeFromNodeId: body.resumeFromNodeId,
           userMessage: body.userMessage,
+          conversationTranscript,
           onEvent: async (event) => {
             send(event);
             if (event.kind === "trace") {

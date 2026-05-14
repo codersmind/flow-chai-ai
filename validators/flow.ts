@@ -10,6 +10,7 @@ export const flowNodeSchema = z.object({
 
 export const flowEdgeSchema = z.object({
   id: z.string(),
+  type: z.string().optional(),
   source: z.string(),
   target: z.string(),
   sourceHandle: z.string().nullable().optional(),

@@ -7,6 +7,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  ConnectionLineType,
   type Node,
   type Edge,
   type ReactFlowInstance,
@@ -44,6 +45,7 @@ function FlowCanvasInner({
     onNodesChange,
     onEdgesChange,
     onConnect,
+    onReconnect,
     setSelectedNode,
     addNode,
     dirty,
@@ -97,6 +99,7 @@ function FlowCanvasInner({
               })),
               edges: edges.map((e) => ({
                 id: e.id,
+                type: e.type,
                 source: e.source,
                 target: e.target,
                 sourceHandle: e.sourceHandle ?? null,
@@ -177,6 +180,14 @@ function FlowCanvasInner({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onReconnect={onReconnect}
+        edgesReconnectable
+        reconnectRadius={14}
+        defaultEdgeOptions={{
+          type: "smoothstep",
+          style: { strokeWidth: 1.75 },
+        }}
+        connectionLineType={ConnectionLineType.SmoothStep}
         onInit={(instance) => {
           rfInstanceRef.current = instance;
         }}

@@ -11,6 +11,9 @@ import { KbSearchNode } from "./kb-search-node";
 import { ApiCallNode } from "./api-call-node";
 import { SubflowNode } from "./subflow-node";
 import { CommentNode } from "./comment-node";
+import { OperatorNode } from "./operator-node";
+import { ExprFunctionNode } from "./expr-function-node";
+import { CardsNode } from "./cards-node";
 import { EndNode } from "./end-node";
 
 export const nodeTypes = {
@@ -20,6 +23,9 @@ export const nodeTypes = {
   choice: ChoiceNode,
   condition: ConditionNode,
   set_variable: SetVariableNode,
+  operator: OperatorNode,
+  function: ExprFunctionNode,
+  cards: CardsNode,
   llm: LlmNode,
   kb_search: KbSearchNode,
   api_call: ApiCallNode,

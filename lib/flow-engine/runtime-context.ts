@@ -11,6 +11,11 @@ export interface ExecutionInput {
   resumeFromNodeId?: string;
   userMessage?: string;
   maxSteps?: number;
+  /**
+   * Recent simulator turns (from client). Lets AI extract resolve "same as before" / "I already told you"
+   * using earlier user lines.
+   */
+  conversationTranscript?: { role: "user" | "assistant" | "system"; content: string }[];
 }
 
 export type EmitEvent = (event: SimulatorEvent) => void | Promise<void>;

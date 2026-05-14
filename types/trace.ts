@@ -11,12 +11,21 @@ export interface TraceEvent {
   createdAt: number;
 }
 
+/** Rich card row (Voiceflow-style Cards / Carousel). */
+export interface SimulatorCardItem {
+  id: string;
+  title: string;
+  body?: string;
+  imageUrl?: string;
+}
+
 export interface SimulatorMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   createdAt: number;
   nodeId?: string;
+  cards?: { layout: "stack" | "carousel"; items: SimulatorCardItem[] };
 }
 
 export type SimulatorEvent =

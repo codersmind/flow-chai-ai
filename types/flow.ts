@@ -7,6 +7,9 @@ export type NodeKind =
   | "choice"
   | "condition"
   | "set_variable"
+  | "operator"
+  | "function"
+  | "cards"
   | "llm"
   | "kb_search"
   | "api_call"
@@ -72,15 +75,70 @@ export interface ConditionNodeData {
   routes: { id: string; label: string }[];
 }
 
+/** How a Set Variable assignment stores the resolved value (string results only). */
+export type SetVariableValueCleanup = "none" | "ai";
+
 export interface SetVariableAssignment {
   id: string;
   variable: string;
   value: string;
+  /**
+   * none = use interpolated value as-is.
+   * ai = if the resolved value is a string, run the same smart extract as Capture (uses Settings → Chat provider).
+   */
+  valueCleanup?: SetVariableValueCleanup;
 }
 
 export interface SetVariableNodeData {
   label: string;
   assignments: SetVariableAssignment[];
+}
+
+export type OperatorStepOp =
+  | "set"
+  | "append"
+  | "add"
+  | "subtract"
+  | "multiply"
+  | "divide"
+  | "uppercase"
+  | "lowercase"
+  | "trim"
+  | "replace";
+
+export interface OperatorStep {
+  id: string;
+  targetVariable: string;
+  op: OperatorStepOp;
+  /** Operand templates ({{var}}); meaning depends on op — see inspector help */
+  args: string[];
+}
+
+export interface OperatorNodeData {
+  label: string;
+  steps: OperatorStep[];
+}
+
+/** Voiceflow-style Function: JEXL expression evaluated against flow variables. */
+export interface ExprFunctionNodeData {
+  label: string;
+  expression: string;
+  outputVariable: string;
+}
+
+export interface CardSlide {
+  id: string;
+  title: string;
+  body?: string;
+  imageUrl?: string;
+}
+
+export interface CardsNodeData {
+  label: string;
+  /** Shown above the cards (supports {{vars}}) */
+  intro?: string;
+  layout: "stack" | "carousel";
+  cards: CardSlide[];
 }
 
 export interface LlmNodeData {
@@ -130,6 +188,9 @@ export type FlowNode =
   | FlowNodeBase<"choice", ChoiceNodeData>
   | FlowNodeBase<"condition", ConditionNodeData>
   | FlowNodeBase<"set_variable", SetVariableNodeData>
+  | FlowNodeBase<"operator", OperatorNodeData>
+  | FlowNodeBase<"function", ExprFunctionNodeData>
+  | FlowNodeBase<"cards", CardsNodeData>
   | FlowNodeBase<"llm", LlmNodeData>
   | FlowNodeBase<"kb_search", KbSearchNodeData>
   | FlowNodeBase<"api_call", ApiCallNodeData>
@@ -141,6 +202,8 @@ export interface FlowEdge {
   id: string;
   source: string;
   target: string;
+  /** React Flow built-in: `default`, `straight`, `step`, `smoothstep`, … */
+  type?: string;
   sourceHandle?: string | null;
   targetHandle?: string | null;
   label?: string;

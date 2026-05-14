@@ -116,7 +116,7 @@ export function BuilderShell({
       </header>
 
       <div className="flex flex-1 overflow-hidden gap-3">
-        <aside className="glass-panel w-60 shrink-0 overflow-y-auto rounded-2xl">
+        <aside className="glass-panel w-[17rem] shrink-0 overflow-y-auto rounded-2xl">
           <NodePalette />
         </aside>
 

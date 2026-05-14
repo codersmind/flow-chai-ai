@@ -5,6 +5,7 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  reconnectEdge,
   type Node,
   type Edge,
   type NodeChange,
@@ -42,6 +43,7 @@ interface CanvasState {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
+  onReconnect: (oldEdge: Edge, newConnection: Connection) => void;
   addNode: (kind: NodeKind, position: { x: number; y: number }) => void;
   updateNodeData: (nodeId: string, data: Record<string, unknown>) => void;
   setSelectedNode: (id: string | null) => void;
@@ -93,7 +95,42 @@ function defaultDataFor(kind: NodeKind): Record<string, unknown> {
     case "set_variable":
       return {
         label: "Set Variable",
-        assignments: [{ id: "a1", variable: "key", value: "value" }],
+        assignments: [
+          {
+            id: "a1",
+            variable: "customer_name",
+            value: "{{last_utterance}}",
+            valueCleanup: "ai",
+          },
+        ],
+      };
+    case "operator":
+      return {
+        label: "Operator",
+        steps: [
+          {
+            id: "op1",
+            targetVariable: "total",
+            op: "add",
+            args: ["{{price}}", "1"],
+          },
+        ],
+      };
+    case "function":
+      return {
+        label: "Function",
+        expression: "name",
+        outputVariable: "fn_result",
+      };
+    case "cards":
+      return {
+        label: "Cards",
+        intro: "Here are a few options:",
+        layout: "stack",
+        cards: [
+          { id: "c1", title: "North region", body: "Coverage and contacts for the north." },
+          { id: "c2", title: "South region", body: "Coverage and contacts for the south." },
+        ],
       };
     case "llm":
       return {
@@ -167,11 +204,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   onConnect: (connection) =>
     set((state) => ({
       edges: addEdge(
-        { ...connection, id: `e_${nanoid(8)}` },
+        { ...connection, id: `e_${nanoid(8)}`, type: "smoothstep" },
         state.edges
       ),
       dirty: true,
     })),
+
+  onReconnect: (oldEdge, newConnection) => {
+    get().takeSnapshot();
+    set((state) => ({
+      edges: reconnectEdge(oldEdge, newConnection, state.edges),
+      dirty: true,
+    }));
+  },
 
   addNode: (kind, position) => {
     if (kind === "start" && get().nodes.some((n) => n.type === "start")) {

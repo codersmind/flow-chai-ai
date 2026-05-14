@@ -26,13 +26,18 @@ import type {
   ApiCallNodeData,
   CaptureNameCleanup,
   CaptureNodeData,
+  CardsNodeData,
   ChoiceNodeData,
   ConditionNodeData,
   ConditionRule,
+  ExprFunctionNodeData,
   KbSearchNodeData,
   LlmNodeData,
   MessageNodeData,
+  OperatorNodeData,
+  OperatorStepOp,
   SetVariableNodeData,
+  SetVariableValueCleanup,
   SubflowNodeData,
 } from "@/types/flow";
 
@@ -90,6 +95,9 @@ export function FlowInspector() {
           {node.type === "choice" ? <ChoiceEditor data={data as unknown as ChoiceNodeData} update={update} /> : null}
           {node.type === "condition" ? <ConditionEditor data={data as unknown as ConditionNodeData} update={update} /> : null}
           {node.type === "set_variable" ? <SetVariableEditor data={data as unknown as SetVariableNodeData} update={update} /> : null}
+          {node.type === "operator" ? <OperatorEditor data={data as unknown as OperatorNodeData} update={update} /> : null}
+          {node.type === "function" ? <ExprFunctionEditor data={data as unknown as ExprFunctionNodeData} update={update} /> : null}
+          {node.type === "cards" ? <CardsEditor data={data as unknown as CardsNodeData} update={update} /> : null}
           {node.type === "llm" ? <LlmEditor data={data as unknown as LlmNodeData} update={update} /> : null}
           {node.type === "kb_search" ? <KbSearchEditor data={data as unknown as KbSearchNodeData} update={update} /> : null}
           {node.type === "api_call" ? <ApiCallEditor data={data as unknown as ApiCallNodeData} update={update} /> : null}
@@ -395,11 +403,18 @@ function ConditionEditor({ data, update }: { data: ConditionNodeData; update: (p
 function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update: (p: Record<string, unknown>) => void }) {
   return (
     <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Voiceflow-style: capture the user line with a <strong>Capture</strong> into{" "}
+        <span className="font-mono">last_utterance</span> (Save reply as full text), then set{" "}
+        <span className="font-mono">customer_name</span> from <span className="font-mono">{"{{last_utterance}}"}</span>{" "}
+        with <strong>AI</strong> to extract the name. Or use one Capture with AI directly into{" "}
+        <span className="font-mono">customer_name</span>.
+      </p>
       <Label>Assignments</Label>
       {(data.assignments ?? []).map((a, i) => (
-        <div key={a.id} className="grid grid-cols-12 gap-1">
+        <div key={a.id} className="grid grid-cols-12 gap-1 items-center">
           <Input
-            className="col-span-5"
+            className="col-span-4"
             placeholder="variable"
             value={a.variable}
             onChange={(e) => {
@@ -409,8 +424,8 @@ function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update
             }}
           />
           <Input
-            className="col-span-6"
-            placeholder="value (supports {{var}})"
+            className="col-span-4"
+            placeholder="{{last_utterance}}"
             value={a.value}
             onChange={(e) => {
               const assignments = [...(data.assignments ?? [])];
@@ -418,6 +433,25 @@ function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update
               update({ assignments });
             }}
           />
+          <Select
+            value={a.valueCleanup === "ai" ? "ai" : "none"}
+            onValueChange={(v) => {
+              const assignments = [...(data.assignments ?? [])];
+              assignments[i] = {
+                ...a,
+                valueCleanup: v as SetVariableValueCleanup,
+              };
+              update({ assignments });
+            }}
+          >
+            <SelectTrigger className="col-span-3 h-9 text-xs">
+              <SelectValue placeholder="Store" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">As-is</SelectItem>
+              <SelectItem value="ai">AI extract</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant="ghost"
             size="icon"
@@ -438,13 +472,285 @@ function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update
           update({
             assignments: [
               ...(data.assignments ?? []),
-              { id: `a_${nanoid(4)}`, variable: "", value: "" },
+              { id: `a_${nanoid(4)}`, variable: "", value: "", valueCleanup: "none" },
             ],
           })
         }
       >
         <Plus className="mr-1 h-3.5 w-3.5" />
         Add assignment
+      </Button>
+    </div>
+  );
+}
+
+function normalizeOperatorArgs(op: OperatorStepOp, prev: string[]): string[] {
+  const n =
+    op === "replace"
+      ? 3
+      : op === "add" || op === "subtract" || op === "multiply" || op === "divide"
+        ? 2
+        : 1;
+  const a = [...prev];
+  while (a.length < n) a.push("");
+  return a.slice(0, n);
+}
+
+function OperatorEditor({ data, update }: { data: OperatorNodeData; update: (p: Record<string, unknown>) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Voiceflow-style <strong>Operator</strong>: run steps in order. Use{" "}
+        <span className="font-mono">{"{{name}}"}</span> in operands. Divide by zero → 0.
+      </p>
+      <Label>Steps</Label>
+      {(data.steps ?? []).map((step, i) => (
+        <div key={step.id} className="space-y-2 rounded-lg border p-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px]">Target variable</Label>
+              <Input
+                className="h-8 text-xs"
+                value={step.targetVariable}
+                onChange={(e) => {
+                  const steps = [...(data.steps ?? [])];
+                  steps[i] = { ...step, targetVariable: e.target.value };
+                  update({ steps });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-[10px]">Operation</Label>
+              <Select
+                value={step.op}
+                onValueChange={(v) => {
+                  const op = v as OperatorStepOp;
+                  const steps = [...(data.steps ?? [])];
+                  steps[i] = { ...step, op, args: normalizeOperatorArgs(op, step.args ?? []) };
+                  update({ steps });
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="set">Set from template</SelectItem>
+                  <SelectItem value="append">Append to variable</SelectItem>
+                  <SelectItem value="add">Add numbers</SelectItem>
+                  <SelectItem value="subtract">Subtract numbers</SelectItem>
+                  <SelectItem value="multiply">Multiply numbers</SelectItem>
+                  <SelectItem value="divide">Divide numbers</SelectItem>
+                  <SelectItem value="uppercase">Uppercase</SelectItem>
+                  <SelectItem value="lowercase">Lowercase</SelectItem>
+                  <SelectItem value="trim">Trim</SelectItem>
+                  <SelectItem value="replace">Replace in string</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {normalizeOperatorArgs(step.op, step.args ?? []).map((arg, j) => (
+            <div key={j}>
+              <Label className="text-[10px]">
+                {step.op === "replace"
+                  ? j === 0
+                    ? "Source string"
+                    : j === 1
+                      ? "Find"
+                      : "Replace with"
+                  : step.op === "add" ||
+                      step.op === "subtract" ||
+                      step.op === "multiply" ||
+                      step.op === "divide"
+                    ? j === 0
+                      ? "A"
+                      : "B"
+                    : "Value"}
+              </Label>
+              <Input
+                className="h-8 font-mono text-xs"
+                value={arg}
+                onChange={(e) => {
+                  const steps = [...(data.steps ?? [])];
+                  const args = normalizeOperatorArgs(step.op, [...(step.args ?? [])]);
+                  args[j] = e.target.value;
+                  steps[i] = { ...step, args };
+                  update({ steps });
+                }}
+              />
+            </div>
+          ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => {
+              const steps = (data.steps ?? []).filter((s) => s.id !== step.id);
+              update({ steps });
+            }}
+          >
+            Remove step
+          </Button>
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() =>
+          update({
+            steps: [
+              ...(data.steps ?? []),
+              {
+                id: `op_${nanoid(4)}`,
+                targetVariable: "result",
+                op: "set" as OperatorStepOp,
+                args: [""],
+              },
+            ],
+          })
+        }
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" />
+        Add step
+      </Button>
+    </div>
+  );
+}
+
+function ExprFunctionEditor({
+  data,
+  update,
+}: {
+  data: ExprFunctionNodeData;
+  update: (p: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Voiceflow-style <strong>Function</strong> using{" "}
+        <a
+          href="https://github.com/TomFrost/Jexl"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          JEXL
+        </a>
+        . Variables become identifiers (e.g. <span className="font-mono">name + &apos; &apos; + city</span>
+        ). Interpolate <span className="font-mono">{"{{ }}"}</span> inside the expression first.
+      </p>
+      <div>
+        <Label>Expression</Label>
+        <Textarea
+          rows={5}
+          className="font-mono text-xs"
+          value={data.expression ?? ""}
+          onChange={(e) => update({ expression: e.target.value })}
+          placeholder={`name + ' lives in ' + city\nage > 18 ? 'adult' : 'minor'`}
+        />
+      </div>
+      <div>
+        <Label>Output variable</Label>
+        <Input
+          value={data.outputVariable ?? ""}
+          onChange={(e) => update({ outputVariable: e.target.value })}
+          placeholder="fn_result"
+        />
+      </div>
+    </div>
+  );
+}
+
+function CardsEditor({ data, update }: { data: CardsNodeData; update: (p: Record<string, unknown>) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Voiceflow-style <strong>Cards / Carousel</strong>. Intro is spoken for TTS; cards render in the simulator.
+      </p>
+      <div>
+        <Label>Intro (optional)</Label>
+        <Textarea
+          rows={2}
+          value={data.intro ?? ""}
+          onChange={(e) => update({ intro: e.target.value })}
+          placeholder="Here are some options {{name}}:"
+        />
+      </div>
+      <div>
+        <Label>Layout</Label>
+        <Select
+          value={data.layout ?? "stack"}
+          onValueChange={(v) => update({ layout: v as CardsNodeData["layout"] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="stack">Stack (vertical)</SelectItem>
+            <SelectItem value="carousel">Carousel (horizontal)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Label>Cards</Label>
+      {(data.cards ?? []).map((c, i) => (
+        <div key={c.id} className="space-y-1.5 rounded-lg border p-2">
+          <Input
+            className="h-8 text-xs"
+            placeholder="Title"
+            value={c.title}
+            onChange={(e) => {
+              const cards = [...(data.cards ?? [])];
+              cards[i] = { ...c, title: e.target.value };
+              update({ cards });
+            }}
+          />
+          <Textarea
+            rows={2}
+            className="text-xs"
+            placeholder="Body (optional)"
+            value={c.body ?? ""}
+            onChange={(e) => {
+              const cards = [...(data.cards ?? [])];
+              cards[i] = { ...c, body: e.target.value };
+              update({ cards });
+            }}
+          />
+          <Input
+            className="h-8 font-mono text-xs"
+            placeholder="Image URL (optional)"
+            value={c.imageUrl ?? ""}
+            onChange={(e) => {
+              const cards = [...(data.cards ?? [])];
+              cards[i] = { ...c, imageUrl: e.target.value };
+              update({ cards });
+            }}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => {
+              const cards = (data.cards ?? []).filter((x) => x.id !== c.id);
+              update({ cards });
+            }}
+          >
+            Remove card
+          </Button>
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() =>
+          update({
+            cards: [
+              ...(data.cards ?? []),
+              { id: `card_${nanoid(4)}`, title: "New card", body: "" },
+            ],
+          })
+        }
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" />
+        Add card
       </Button>
     </div>
   );

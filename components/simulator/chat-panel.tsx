@@ -63,12 +63,17 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
   } = {}) => {
     sim.setRunning(true);
     try {
+      const state = useSimulatorStore.getState();
       const res = await fetch(`/api/flows/${flowId}/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          conversationId: sim.conversationId,
-          variables: sim.variables,
+          conversationId: state.conversationId,
+          variables: state.variables,
+          conversationTranscript: state.messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
           ...payload,
         }),
       });
@@ -250,18 +255,62 @@ export function ChatPanel({ flowId }: ChatPanelProps) {
               respond live here.
             </p>
           ) : null}
-          {sim.messages.map((m) => (
+          {sim.messages.map((m) => {
+            const deck =
+              m.role === "assistant" && m.cards?.items && m.cards.items.length > 0 ? m.cards : null;
+            return (
             <div
               key={m.id}
               className={
                 m.role === "user"
                   ? "ml-auto max-w-[85%] rounded-2xl bg-primary px-3 py-2 text-sm text-primary-foreground shadow-sm"
-                  : "mr-auto max-w-[85%] rounded-2xl bg-muted px-3 py-2 text-sm"
+                  : "mr-auto max-w-[min(92%,36rem)] rounded-2xl bg-muted px-3 py-2 text-sm"
               }
             >
-              <p className="whitespace-pre-wrap">{m.content}</p>
+              {deck ? (
+                <div className="space-y-2">
+                  {m.content.trim() ? (
+                    <p className="whitespace-pre-wrap">{m.content}</p>
+                  ) : null}
+                  <div
+                    className={
+                      deck.layout === "carousel"
+                        ? "flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
+                        : "flex flex-col gap-2"
+                    }
+                  >
+                    {deck.items.map((card) => (
+                      <article
+                        key={card.id}
+                        className={
+                          deck.layout === "carousel"
+                            ? "w-44 shrink-0 rounded-xl border border-border/80 bg-background/90 px-2.5 py-2 shadow-sm"
+                            : "rounded-xl border border-border/80 bg-background/90 px-2.5 py-2 shadow-sm"
+                        }
+                      >
+                        {card.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={card.imageUrl}
+                            alt=""
+                            className="mb-1.5 max-h-28 w-full rounded-lg object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : null}
+                        <h4 className="text-xs font-semibold leading-tight">{card.title}</h4>
+                        {card.body ? (
+                          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{card.body}</p>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{m.content}</p>
+              )}
             </div>
-          ))}
+            );
+          })}
           {sim.pendingChoices && sim.pendingChoices.length > 0 ? (
             <div className="flex flex-wrap gap-2 pt-1">
               {sim.pendingChoices.map((c) => (
