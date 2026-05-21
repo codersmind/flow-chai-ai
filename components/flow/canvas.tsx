@@ -186,6 +186,19 @@ function FlowCanvasInner({
         defaultEdgeOptions={{
           type: "smoothstep",
           style: { strokeWidth: 1.75 },
+          animated: true,
+          markerEnd: {
+            type: "arrowclosed",
+            width: 20,
+            height: 20,
+            color: "hsl(var(--primary))",
+          },
+          markerStart: {
+            type: "arrowclosed",
+            width: 20,
+            height: 20,
+            color: "hsl(var(--primary))",
+          },
         }}
         connectionLineType={ConnectionLineType.SmoothStep}
         onInit={(instance) => {

@@ -13,7 +13,7 @@ interface SimulatorPanelProps {
 
 export function SimulatorPanel({ flowId, agentVariables = [] }: SimulatorPanelProps) {
   return (
-    <Tabs defaultValue="chat" className="flex h-full flex-col">
+    <Tabs defaultValue="chat" className="flex h-full min-h-0 flex-1 flex-col">
       <TabsList className="m-3 h-11 rounded-xl bg-muted/70 p-1">
         <TabsTrigger value="chat">Simulator</TabsTrigger>
         <TabsTrigger value="variables">Variables</TabsTrigger>

@@ -19,7 +19,16 @@ import {
 import { VariablesManager } from "@/components/projects/variables-manager";
 import { EmbedPublishDialog } from "@/components/embed/embed-publish-dialog";
 import type { AgentVariable } from "@/types/project";
-import { ArrowLeft, Database, PanelRightClose, PanelRightOpen, Workflow } from "lucide-react";
+import {
+  ArrowLeft,
+  Database,
+  PanelRightClose,
+  PanelRightOpen,
+  Play,
+  Workflow,
+  X,
+} from "lucide-react";
+import { useSimulatorStore } from "@/stores/simulator-store";
 
 interface BuilderShellProps {
   projectId: string;
@@ -47,8 +56,9 @@ export function BuilderShell({
   initialEdges,
   agentVariables,
 }: BuilderShellProps) {
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [variablesOpen, setVariablesOpen] = useState(false);
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
 
   return (
     <div className="flex h-screen flex-col bg-transparent p-3">
@@ -89,7 +99,22 @@ export function BuilderShell({
             initialEnabled={embedEnabled}
             initialToken={embedToken}
           />
-          <Button
+          {!simulatorOpen ? (
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-xl gap-1.5 shadow-sm"
+              onClick={() => {
+                setSimulatorOpen(true);
+                useSimulatorStore.getState().signalRunPanelOpened();
+              }}
+              title="Open simulator and start"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" />
+              Run
+            </Button>
+          ) : null}
+          {/* <Button
             size="sm"
             variant="outline"
             className="rounded-xl"
@@ -102,7 +127,7 @@ export function BuilderShell({
               <PanelRightOpen className="mr-1 h-3.5 w-3.5" />
             )}
             {inspectorOpen ? "Hide editor" : "Show editor"}
-          </Button>
+          </Button> */}
           {flows.length > 1 ? (
             <select
               defaultValue={flowId}
@@ -147,9 +172,27 @@ export function BuilderShell({
           </aside>
         ) : null}
 
-        <aside className="glass-panel flex w-96 shrink-0 flex-col overflow-hidden rounded-2xl">
-          <SimulatorPanel flowId={flowId} agentVariables={agentVariables} />
-        </aside>
+        {simulatorOpen ? (
+          <aside className="glass-panel flex w-96 shrink-0 flex-col overflow-hidden rounded-2xl">
+            <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b px-3">
+              <span className="text-sm font-semibold tracking-tight">Simulator</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-lg"
+                onClick={() => setSimulatorOpen(false)}
+                title="Hide simulator"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close simulator</span>
+              </Button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <SimulatorPanel flowId={flowId} agentVariables={agentVariables} />
+            </div>
+          </aside>
+        ) : null}
       </div>
     </div>
   );

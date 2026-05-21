@@ -13,13 +13,18 @@ interface SimulatorState {
   pendingSuggestions: string[];
   running: boolean;
   ended: boolean;
+  /** Bumped when the builder Run button opens the simulator; ChatPanel starts once per id. */
+  runLaunchId: number;
+  lastConsumedRunLaunchId: number;
   initialize: () => void;
   appendEvent: (event: SimulatorEvent) => void;
   setRunning: (running: boolean) => void;
   reset: () => void;
+  signalRunPanelOpened: () => void;
+  consumeRunLaunch: (id: number) => boolean;
 }
 
-export const useSimulatorStore = create<SimulatorState>((set) => ({
+export const useSimulatorStore = create<SimulatorState>((set, get) => ({
   conversationId: null,
   awaitingNodeId: null,
   messages: [],
@@ -29,6 +34,20 @@ export const useSimulatorStore = create<SimulatorState>((set) => ({
   pendingSuggestions: [],
   running: false,
   ended: false,
+  runLaunchId: 0,
+  lastConsumedRunLaunchId: 0,
+
+  signalRunPanelOpened: () =>
+    set((s) => ({
+      runLaunchId: s.runLaunchId + 1,
+    })),
+
+  consumeRunLaunch: (id: number) => {
+    const state = get();
+    if (id <= 0 || state.lastConsumedRunLaunchId >= id) return false;
+    set({ lastConsumedRunLaunchId: id });
+    return true;
+  },
 
   initialize: () =>
     set({

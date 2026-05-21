@@ -327,8 +327,8 @@ export function EmbedChat({ flowId, embedToken, flowName }: EmbedChatProps) {
                           key={card.id}
                           className={
                             deck.layout === "carousel"
-                              ? "w-44 shrink-0 rounded-xl border border-border/80 bg-background/90 px-2.5 py-2 shadow-sm"
-                              : "rounded-xl border border-border/80 bg-background/90 px-2.5 py-2 shadow-sm"
+                              ? "flex w-[min(100%,13.5rem)] min-w-[12rem] shrink-0 flex-col rounded-xl border border-border/80 bg-background/95 px-3 py-2.5 shadow-sm"
+                              : "rounded-xl border border-border/80 bg-background/95 px-3 py-2.5 shadow-sm"
                           }
                         >
                           {card.imageUrl ? (
@@ -336,13 +336,31 @@ export function EmbedChat({ flowId, embedToken, flowName }: EmbedChatProps) {
                             <img
                               src={card.imageUrl}
                               alt=""
-                              className="mb-1.5 max-h-28 w-full rounded-lg object-cover"
+                              className={
+                                deck.layout === "carousel"
+                                  ? "mb-2 max-h-24 w-full rounded-lg object-cover"
+                                  : "mb-2 max-h-40 w-full rounded-lg object-cover sm:max-h-48"
+                              }
                               referrerPolicy="no-referrer"
                             />
                           ) : null}
-                          <h4 className="text-xs font-semibold leading-tight">{card.title}</h4>
+                          <h4
+                            className={
+                              deck.layout === "carousel"
+                                ? "text-xs font-semibold leading-snug"
+                                : "text-sm font-semibold leading-snug"
+                            }
+                          >
+                            {card.title}
+                          </h4>
                           {card.body ? (
-                            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                            <p
+                              className={
+                                deck.layout === "carousel"
+                                  ? "mt-1.5 max-h-36 overflow-y-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed text-muted-foreground [scrollbar-width:thin]"
+                                  : "mt-1.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground"
+                              }
+                            >
                               {card.body}
                             </p>
                           ) : null}

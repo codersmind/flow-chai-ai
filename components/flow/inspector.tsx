@@ -22,10 +22,12 @@ import {
 } from "@/components/ui/tabs";
 import { Plus, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
+import { buildSlidesFromRoot, firstListRow, normalizedCardMapKeys } from "@/lib/flow-engine/dynamic-card-mapping";
 import type {
   ApiCallNodeData,
   CaptureNameCleanup,
   CaptureNodeData,
+  CardSlide,
   CardsNodeData,
   ChoiceNodeData,
   ConditionNodeData,
@@ -414,7 +416,7 @@ function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update
       {(data.assignments ?? []).map((a, i) => (
         <div key={a.id} className="grid grid-cols-12 gap-1 items-center">
           <Input
-            className="col-span-4"
+            className="col-span-4 min-w-0"
             placeholder="variable"
             value={a.variable}
             onChange={(e) => {
@@ -424,7 +426,7 @@ function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update
             }}
           />
           <Input
-            className="col-span-4"
+            className="col-span-4 min-w-0"
             placeholder="{{last_utterance}}"
             value={a.value}
             onChange={(e) => {
@@ -433,29 +435,31 @@ function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update
               update({ assignments });
             }}
           />
-          <Select
-            value={a.valueCleanup === "ai" ? "ai" : "none"}
-            onValueChange={(v) => {
-              const assignments = [...(data.assignments ?? [])];
-              assignments[i] = {
-                ...a,
-                valueCleanup: v as SetVariableValueCleanup,
-              };
-              update({ assignments });
-            }}
-          >
-            <SelectTrigger className="col-span-3 h-9 text-xs">
-              <SelectValue placeholder="Store" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">As-is</SelectItem>
-              <SelectItem value="ai">AI extract</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="col-span-3 min-w-0">
+            <Select
+              value={a.valueCleanup === "ai" ? "ai" : "none"}
+              onValueChange={(v) => {
+                const assignments = [...(data.assignments ?? [])];
+                assignments[i] = {
+                  ...a,
+                  valueCleanup: v as SetVariableValueCleanup,
+                };
+                update({ assignments });
+              }}
+            >
+              <SelectTrigger className="h-9 w-full text-xs">
+                <SelectValue placeholder="Store" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">As-is</SelectItem>
+                <SelectItem value="ai">AI extract</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="col-span-1"
+            className="col-span-1 shrink-0"
             onClick={() => {
               const assignments = (data.assignments ?? []).filter((x) => x.id !== a.id);
               update({ assignments });
@@ -466,6 +470,7 @@ function SetVariableEditor({ data, update }: { data: SetVariableNodeData; update
         </div>
       ))}
       <Button
+        type="button"
         variant="outline"
         size="sm"
         onClick={() =>
@@ -660,11 +665,241 @@ function ExprFunctionEditor({
   );
 }
 
+function DynamicCardsLivePreview({
+  data,
+  update,
+}: {
+  data: CardsNodeData;
+  update: (p: Record<string, unknown>) => void;
+}) {
+  const sampleText = data.dynamicPreviewSampleJson ?? "";
+
+  const parsed = useMemo(() => {
+    const t = sampleText.trim();
+    if (!t) return { kind: "empty" as const };
+    try {
+      return { kind: "json" as const, value: JSON.parse(t) as unknown };
+    } catch {
+      return { kind: "error" as const, error: "Invalid JSON." };
+    }
+  }, [sampleText]);
+
+  const previewMemo = useMemo(() => {
+    if (parsed.kind === "error") {
+      return {
+        items: [] as CardSlide[],
+        warning: undefined as string | undefined,
+        error: parsed.error,
+        emptySample: false,
+      };
+    }
+    if (parsed.kind === "empty") {
+      return {
+        items: [] as CardSlide[],
+        warning: undefined as string | undefined,
+        error: undefined as string | undefined,
+        emptySample: true,
+      };
+    }
+    const res = buildSlidesFromRoot(
+      parsed.value,
+      data.dynamicArrayPath,
+      data.dynamicMapTitle,
+      data.dynamicMapBody,
+      data.dynamicMapImage,
+      {}
+    );
+    return {
+      items: res.items,
+      warning: res.warning,
+      error: undefined as string | undefined,
+      emptySample: false,
+    };
+  }, [
+    parsed,
+    data.dynamicArrayPath,
+    data.dynamicMapTitle,
+    data.dynamicMapBody,
+    data.dynamicMapImage,
+  ]);
+
+  const slide = previewMemo.items[0];
+  const samplePreset = `{
+  "title": "Product A",
+  "description": "Body text from your API…",
+  "imageUrl": "https://…"
+}`;
+
+  const titleOnlyExample = '[\n  { "title": "Only a title field on each row" }\n]';
+
+  const bodyHint = useMemo(() => {
+    if (parsed.kind !== "json" || !slide) return null;
+    const keys = normalizedCardMapKeys(
+      data.dynamicMapTitle,
+      data.dynamicMapBody,
+      data.dynamicMapImage
+    );
+    if (!keys.bodyKeyConfigured) return null;
+    const row = firstListRow(parsed.value, data.dynamicArrayPath);
+    if (!row || typeof row !== "object") return null;
+    const o = row as Record<string, unknown>;
+    const key = keys.bodyKeyConfigured;
+    if (!(key in o)) {
+      return `Property "${key}" is missing on the first row — use one JSON key (e.g. description), not a sentence.`;
+    }
+    if (!slide.body) {
+      return `Property "${key}" exists but is empty on the first row.`;
+    }
+    return null;
+  }, [parsed, slide, data.dynamicArrayPath, data.dynamicMapTitle, data.dynamicMapBody, data.dynamicMapImage]);
+
+  const titleOnlyNote = useMemo(() => {
+    if (parsed.kind !== "json" || !slide || slide.body) return null;
+    const keys = normalizedCardMapKeys(
+      data.dynamicMapTitle,
+      data.dynamicMapBody,
+      data.dynamicMapImage
+    );
+    if (keys.bodyKeyConfigured) return null;
+    return "This row only supplies a title — no description/body field was found. That is valid; the card shows the title only.";
+  }, [parsed, slide, data.dynamicMapTitle, data.dynamicMapBody, data.dynamicMapImage]);
+
+  const isCarousel = data.layout === "carousel";
+
+  return (
+    <div className="space-y-3 border-t border-border/60 pt-3">
+      <div className="space-y-1.5">
+        <Label className="text-xs">Sample JSON (for preview only)</Label>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Paste a copy of what your API stores in the list variable (or one row). Leave empty to skip
+          preview — the simulator uses live variables, not this box.
+        </p>
+        <Textarea
+          rows={6}
+          spellCheck={false}
+          className="min-h-[8.5rem] resize-y font-mono text-[11px] leading-relaxed"
+          placeholder={`Paste JSON, e.g.\n${samplePreset}`}
+          value={sampleText}
+          onChange={(e) => update({ dynamicPreviewSampleJson: e.target.value })}
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => update({ dynamicPreviewSampleJson: titleOnlyExample })}
+          >
+            Insert title-only example
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-muted-foreground"
+            onClick={() => update({ dynamicPreviewSampleJson: "" })}
+          >
+            Clear sample
+          </Button>
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden rounded-xl border border-border/80 bg-gradient-to-b from-card to-muted/20 shadow-sm">
+        <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-3 py-2">
+          <span className="text-xs font-semibold tracking-tight">Live preview</span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                isCarousel ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {isCarousel ? "Carousel" : "Stack"}
+            </span>
+            <span className="text-[10px] text-muted-foreground">First slide</span>
+          </div>
+        </div>
+        <div className="p-3">
+          {previewMemo.emptySample ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              No sample JSON — add JSON above to preview mapping, or run the flow in the simulator to
+              see real cards.
+            </p>
+          ) : parsed.kind === "error" ? (
+            <p className="text-xs text-destructive">{previewMemo.error}</p>
+          ) : previewMemo.warning && !slide ? (
+            <p className="text-xs text-amber-700 dark:text-amber-500">{previewMemo.warning}</p>
+          ) : !slide ? (
+            <p className="text-xs text-muted-foreground">
+              No slide — check path points to your array, or fix sample JSON.
+            </p>
+          ) : (
+            <div className={isCarousel ? "flex justify-center" : ""}>
+              <article
+                className={
+                  isCarousel
+                    ? "w-full max-w-[14rem] rounded-xl border border-border/70 bg-background/95 px-3 py-2.5 shadow-sm"
+                    : "max-w-full rounded-xl border border-border/70 bg-background/95 px-3 py-2.5 shadow-sm"
+                }
+              >
+                {slide.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={slide.imageUrl}
+                    alt=""
+                    className={
+                      isCarousel
+                        ? "mb-2 max-h-24 w-full rounded-lg object-cover"
+                        : "mb-2 max-h-32 w-full rounded-lg object-cover sm:max-h-40"
+                    }
+                    referrerPolicy="no-referrer"
+                  />
+                ) : null}
+                <h4
+                  className={
+                    isCarousel
+                      ? "text-xs font-semibold leading-snug"
+                      : "text-sm font-semibold leading-snug"
+                  }
+                >
+                  {slide.title}
+                </h4>
+                {slide.body ? (
+                  <p
+                    className={
+                      isCarousel
+                        ? "mt-1.5 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed text-muted-foreground [scrollbar-width:thin]"
+                        : "mt-1.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground"
+                    }
+                  >
+                    {slide.body}
+                  </p>
+                ) : null}
+              </article>
+            </div>
+          )}
+          {parsed.kind === "json" && slide && titleOnlyNote ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{titleOnlyNote}</p>
+          ) : null}
+          {parsed.kind === "json" && previewMemo.warning && slide ? (
+            <p className="mt-2 text-[11px] text-amber-800 dark:text-amber-400">{previewMemo.warning}</p>
+          ) : null}
+          {bodyHint ? (
+            <p className="mt-2 border-t border-border/50 pt-2 text-[11px] text-muted-foreground">{bodyHint}</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CardsEditor({ data, update }: { data: CardsNodeData; update: (p: Record<string, unknown>) => void }) {
+  const dynamicOn = !!(data.dynamicListSource ?? "").trim();
+
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Voiceflow-style <strong>Cards / Carousel</strong>. Intro is spoken for TTS; cards render in the simulator.
+        Voiceflow-style <strong>Cards / Carousel</strong>. Use <strong>static</strong> slides below, or map
+        rows from an <strong>API output variable</strong> (array of objects) for a looping stack or carousel.
       </p>
       <div>
         <Label>Intro (optional)</Label>
@@ -690,68 +925,198 @@ function CardsEditor({ data, update }: { data: CardsNodeData; update: (p: Record
           </SelectContent>
         </Select>
       </div>
-      <Label>Cards</Label>
-      {(data.cards ?? []).map((c, i) => (
-        <div key={c.id} className="space-y-1.5 rounded-lg border p-2">
-          <Input
-            className="h-8 text-xs"
-            placeholder="Title"
-            value={c.title}
-            onChange={(e) => {
-              const cards = [...(data.cards ?? [])];
-              cards[i] = { ...c, title: e.target.value };
-              update({ cards });
-            }}
-          />
-          <Textarea
-            rows={2}
-            className="text-xs"
-            placeholder="Body (optional)"
-            value={c.body ?? ""}
-            onChange={(e) => {
-              const cards = [...(data.cards ?? [])];
-              cards[i] = { ...c, body: e.target.value };
-              update({ cards });
-            }}
-          />
-          <Input
-            className="h-8 font-mono text-xs"
-            placeholder="Image URL (optional)"
-            value={c.imageUrl ?? ""}
-            onChange={(e) => {
-              const cards = [...(data.cards ?? [])];
-              cards[i] = { ...c, imageUrl: e.target.value };
-              update({ cards });
-            }}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => {
-              const cards = (data.cards ?? []).filter((x) => x.id !== c.id);
-              update({ cards });
-            }}
-          >
-            Remove card
-          </Button>
+
+      <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+        <div className="space-y-0.5 pr-2">
+          <Label htmlFor="cards-dynamic" className="text-sm">
+            From API / JSON variable
+          </Label>
+          <p className="text-[11px] text-muted-foreground">
+            Wire <span className="font-mono">API Call</span> → this node; set the same variable name here.
+          </p>
         </div>
-      ))}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() =>
-          update({
-            cards: [
-              ...(data.cards ?? []),
-              { id: `card_${nanoid(4)}`, title: "New card", body: "" },
-            ],
-          })
-        }
-      >
-        <Plus className="mr-1 h-3.5 w-3.5" />
-        Add card
-      </Button>
+        <Switch
+          id="cards-dynamic"
+          checked={dynamicOn}
+          onCheckedChange={(on) => {
+            if (on) {
+              update({ dynamicListSource: (data.dynamicListSource ?? "").trim() || "api_result" });
+            } else {
+              update({
+                dynamicListSource: "",
+                dynamicArrayPath: "",
+                dynamicMapTitle: "",
+                dynamicMapBody: "",
+                dynamicMapImage: "",
+              });
+            }
+          }}
+        />
+      </div>
+
+      {dynamicOn ? (
+        <div className="space-y-3 rounded-xl border border-dashed border-primary/20 bg-muted/40 p-3">
+          <div>
+            <p className="text-xs font-medium text-foreground">API list mapping</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Point to your array variable, then name the object keys used for each slide.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>List variable</Label>
+            <Input
+              className="font-mono text-xs"
+              value={data.dynamicListSource ?? ""}
+              onChange={(e) => update({ dynamicListSource: e.target.value })}
+              placeholder="api_result"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Path to array (optional)</Label>
+            <Input
+              className="font-mono text-xs"
+              value={data.dynamicArrayPath ?? ""}
+              onChange={(e) => update({ dynamicArrayPath: e.target.value })}
+              placeholder="data.items — leave empty if the variable is already the array"
+            />
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              Use a path inside the API object to the <strong>array of rows</strong> (e.g.{" "}
+              <span className="font-mono">data.items</span>). Do <strong>not</strong> put a row field name
+              here (e.g. <span className="font-mono">title</span>) — that breaks mapping.
+            </p>
+          </div>
+          <div className="space-y-2 border-t border-border/60 pt-3">
+            <Label className="text-xs">Keys on each row (object property names)</Label>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-normal text-muted-foreground">Title</Label>
+                <Input
+                  className="font-mono text-xs"
+                  value={data.dynamicMapTitle ?? ""}
+                  onChange={(e) => update({ dynamicMapTitle: e.target.value })}
+                  placeholder="title"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-normal text-muted-foreground">Image URL</Label>
+                <Input
+                  className="font-mono text-xs"
+                  value={data.dynamicMapImage ?? ""}
+                  onChange={(e) => update({ dynamicMapImage: e.target.value })}
+                  placeholder="imageUrl (optional)"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-normal text-muted-foreground">Body property key</Label>
+              <Textarea
+                rows={2}
+                spellCheck={false}
+                className="min-h-[3.5rem] resize-y font-mono text-xs leading-snug"
+                value={data.dynamicMapBody ?? ""}
+                onChange={(e) => update({ dynamicMapBody: e.target.value })}
+                placeholder="description — one property name (first line); leave empty for auto: description, body, summary…"
+              />
+              <p className="text-[10px] leading-normal text-muted-foreground">
+                This is the <strong>JSON field name</strong> for body text on each row, not the text itself.
+              </p>
+            </div>
+          </div>
+
+          <DynamicCardsLivePreview data={data} update={update} />
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <Label>{dynamicOn ? "Manual cards (optional fallback)" : "Cards"}</Label>
+        {dynamicOn ? (
+          <p className="text-[11px] text-muted-foreground">
+            You can still add cards here. They are used if the API variable is missing or the list is
+            empty.
+          </p>
+        ) : null}
+        {(data.cards ?? []).map((c, i) => (
+          <div
+            key={c.id}
+            className="space-y-2.5 rounded-xl border border-border/80 bg-card/60 p-3 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Card {i + 1}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                title="Remove card"
+                onClick={() => {
+                  const cards = (data.cards ?? []).filter((x) => x.id !== c.id);
+                  update({ cards });
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Title</Label>
+              <Input
+                className="h-9 text-sm"
+                placeholder="Short headline"
+                value={c.title}
+                onChange={(e) => {
+                  const cards = [...(data.cards ?? [])];
+                  cards[i] = { ...c, title: e.target.value };
+                  update({ cards });
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Body</Label>
+              <Textarea
+                rows={4}
+                className="min-h-[6.5rem] resize-y text-sm leading-relaxed"
+                placeholder="Longer description or bullet list (optional)"
+                value={c.body ?? ""}
+                onChange={(e) => {
+                  const cards = [...(data.cards ?? [])];
+                  cards[i] = { ...c, body: e.target.value };
+                  update({ cards });
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Image URL</Label>
+              <Input
+                className="h-9 font-mono text-xs"
+                placeholder="https://… (optional)"
+                value={c.imageUrl ?? ""}
+                onChange={(e) => {
+                  const cards = [...(data.cards ?? [])];
+                  cards[i] = { ...c, imageUrl: e.target.value };
+                  update({ cards });
+                }}
+              />
+            </div>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            update({
+              cards: [
+                ...(data.cards ?? []),
+                { id: `card_${nanoid(4)}`, title: "New card", body: "" },
+              ],
+            })
+          }
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Add card
+        </Button>
+      </div>
     </div>
   );
 }

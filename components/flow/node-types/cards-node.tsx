@@ -7,7 +7,9 @@ import type { CardsNodeData } from "@/types/flow";
 
 export function CardsNode(props: NodeProps) {
   const data = props.data as unknown as CardsNodeData;
+  const dyn = (data.dynamicListSource ?? "").trim();
   const n = (data.cards ?? []).length;
+  const layout = data.layout === "carousel" ? "Carousel" : "Stack";
   return (
     <>
       <Handle type="target" position={Position.Left} />
@@ -18,7 +20,9 @@ export function CardsNode(props: NodeProps) {
         icon={<LayoutGrid className="h-3.5 w-3.5" />}
       >
         <p className="text-xs text-muted-foreground">
-          {n} card{n === 1 ? "" : "s"} · {data.layout === "carousel" ? "Carousel" : "Stack"}
+          {dyn
+            ? `From ${dyn} · ${layout}`
+            : `${n} card${n === 1 ? "" : "s"} · ${layout}`}
         </p>
       </NodeShell>
       <Handle type="source" position={Position.Right} />

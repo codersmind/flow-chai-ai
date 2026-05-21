@@ -91,7 +91,7 @@ const SECTIONS: PaletteSection[] = [
         label: "Cards",
         voiceflowLabel: "Cards / Carousel",
         icon: <LayoutGrid className="h-4 w-4" />,
-        description: "Rich card rows (stack or horizontal carousel) in the simulator",
+        description: "Stack or carousel; static slides or rows from an API/JSON variable",
       },
     ],
   },

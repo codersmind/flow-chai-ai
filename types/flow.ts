@@ -139,6 +139,24 @@ export interface CardsNodeData {
   intro?: string;
   layout: "stack" | "carousel";
   cards: CardSlide[];
+  /**
+   * When set, cards are built from this flow variable (e.g. API `outputVariable`).
+   * Value must be an array of objects, or set `dynamicArrayPath` to reach the array inside an object.
+   */
+  dynamicListSource?: string;
+  /** Dot path from variable root to the array, e.g. `data.items` or `results`. Empty if the variable is already the array. */
+  dynamicArrayPath?: string;
+  /** Object key for card title on each row (default: title) */
+  dynamicMapTitle?: string;
+  /** Object key for card body (default: description, then body) */
+  dynamicMapBody?: string;
+  /** Object key for image URL (default: try imageUrl, image, thumbnail) */
+  dynamicMapImage?: string;
+  /**
+   * Optional JSON pasted in the inspector to preview how list + path + keys map to a card
+   * (first row only). Not used at runtime.
+   */
+  dynamicPreviewSampleJson?: string;
 }
 
 export interface LlmNodeData {
