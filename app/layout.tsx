@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import NextTopLoader from "nextjs-toploader";
 import { Toaster } from "sonner";
 import "./globals.css";
-import "@xyflow/react/dist/style.css";
 
 export const metadata: Metadata = {
   title: "LocalVoiceFlow",
@@ -16,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
+        <NextTopLoader color="hsl(var(--primary))" showSpinner={false} />
         {children}
         <Toaster richColors position="bottom-right" />
       </body>

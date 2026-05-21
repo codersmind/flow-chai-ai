@@ -68,10 +68,20 @@ export async function GET(req: NextRequest) {
   root.appendChild(btn);
   document.body.appendChild(root);
   var open = false;
+  function notifyStart() {
+    if (!frame.contentWindow) return;
+    try {
+      frame.contentWindow.postMessage({ type: "lvf-embed", action: "start" }, "*");
+    } catch (e) { /* ignore */ }
+  }
   function setOpen(v) {
     open = v;
     panel.style.display = v ? "block" : "none";
+    if (v) notifyStart();
   }
+  frame.addEventListener("load", function() {
+    if (open) notifyStart();
+  });
   btn.addEventListener("click", function() { setOpen(!open); });
   close.addEventListener("click", function() { setOpen(false); });
 })();`;

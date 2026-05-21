@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { getFlow } from "@/lib/db/repositories/projects";
 import { EmbedChat } from "@/components/embed/embed-chat";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 interface PageProps {
   params: Promise<{ flowId: string }>;
   searchParams: Promise<{ t?: string }>;

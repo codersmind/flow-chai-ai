@@ -263,6 +263,9 @@ export function EmbedChat({ flowId, embedToken, flowName }: EmbedChatProps) {
     focusComposer();
   };
 
+  const runningRef = useRef(false);
+  runningRef.current = running;
+
   const startConversation = async () => {
     setConversationId(null);
     conversationIdRef.current = null;
@@ -273,6 +276,39 @@ export function EmbedChat({ flowId, embedToken, flowName }: EmbedChatProps) {
     focusComposer();
   };
 
+  const startConversationRef = useRef(startConversation);
+  startConversationRef.current = startConversation;
+
+  const autoStartedRef = useRef(false);
+
+  const tryAutoStart = () => {
+    if (autoStartedRef.current) return;
+    if (runningRef.current) return;
+    if (conversationIdRef.current) return;
+    if (chatRef.current.messages.length > 0) return;
+    autoStartedRef.current = true;
+    void startConversationRef.current();
+  };
+
+  /** Full-page embed (not inside the widget iframe): start immediately. */
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.self === window.top) {
+      tryAutoStart();
+    }
+  }, []);
+
+  /** Widget opens the chat panel → parent posts `lvf-embed` / `start`. */
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type !== "lvf-embed" || data.action !== "start") return;
+      tryAutoStart();
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
   return (
     <div className="flex h-full min-h-[320px] flex-col bg-background text-foreground">
       <div className="flex items-center justify-between border-b px-3 py-2.5">
@@ -281,19 +317,22 @@ export function EmbedChat({ flowId, embedToken, flowName }: EmbedChatProps) {
           size="sm"
           variant="outline"
           className="rounded-xl"
-          onClick={startConversation}
+          onClick={() => {
+            autoStartedRef.current = false;
+            void startConversation();
+          }}
           disabled={running}
         >
           <RotateCcw className="mr-1 h-3.5 w-3.5" />
-          {conversationId ? "Restart" : "Start"}
+          Restart
         </Button>
       </div>
 
       <ScrollArea className="flex-1">
         <div ref={scrollRef} className="space-y-2.5 p-3">
-          {messages.length === 0 ? (
+          {messages.length === 0 && !running ? (
             <p className="text-xs text-muted-foreground">
-              Press Start to chat. This window may be embedded on another website.
+              Starting conversation…
             </p>
           ) : null}
           {messages.map((m) => {

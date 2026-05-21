@@ -1,5 +1,6 @@
 "use client";
 
+import "@xyflow/react/dist/style.css";
 import Link from "next/link";
 import { useState } from "react";
 import type { Node, Edge } from "@xyflow/react";
