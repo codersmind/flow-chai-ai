@@ -125,6 +125,10 @@ export const appSettings = sqliteTable("app_settings", {
   openaiApiKey: text("openai_api_key"),
   openaiDefaultModel: text("openai_default_model").notNull().default("gpt-4o-mini"),
   openaiBaseUrl: text("openai_base_url"),
+  openrouterApiKey: text("openrouter_api_key"),
+  openrouterDefaultModel: text("openrouter_default_model")
+    .notNull()
+    .default("openai/gpt-4o-mini"),
   ttsVoice: text("tts_voice"),
   sttLanguage: text("stt_language").notNull().default("en-US"),
   updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),

@@ -3,6 +3,11 @@ import type { LanguageModel } from "ai";
 import { generateText, streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { getDefaultModel, getOllamaProvider, listOllamaModels } from "./ollama";
+import {
+  OPENROUTER_BASE_URL,
+  openRouterHeaders,
+  resolveOpenRouterApiKey,
+} from "./openrouter";
 import { getSettings } from "@/lib/db/repositories/settings";
 
 export interface ChatOptions {
@@ -18,6 +23,7 @@ export interface ChatOptions {
 export async function getDefaultChatModelId(): Promise<string> {
   const s = await getSettings();
   if (s.aiProvider === "openai") return s.openaiDefaultModel;
+  if (s.aiProvider === "openrouter") return s.openrouterDefaultModel;
   return getDefaultModel();
 }
 
@@ -58,6 +64,25 @@ export async function getChatLanguageModel(opts: {
     });
     const id = (opts.model?.trim() || settings.openaiDefaultModel || "gpt-4o-mini").trim();
     return openai(id, opts.jsonMode ? { structuredOutputs: true } : undefined);
+  }
+  if (settings.aiProvider === "openrouter") {
+    const apiKey = resolveOpenRouterApiKey(settings.openrouterApiKey);
+    if (!apiKey) {
+      throw new Error(
+        "OpenRouter is selected but no API key is configured. Add it in Settings or set OPENROUTER_API_KEY in the environment."
+      );
+    }
+    const openrouter = createOpenAI({
+      apiKey,
+      baseURL: OPENROUTER_BASE_URL,
+      headers: openRouterHeaders(),
+    });
+    const id = (
+      opts.model?.trim() ||
+      settings.openrouterDefaultModel ||
+      "openai/gpt-4o-mini"
+    ).trim();
+    return openrouter(id, opts.jsonMode ? { structuredOutputs: true } : undefined);
   }
   const provider = await getOllamaProvider();
   const modelName = await resolveOllamaModelName(opts.model);

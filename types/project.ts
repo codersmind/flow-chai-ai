@@ -37,7 +37,7 @@ export interface Flow {
   updatedAt: number;
 }
 
-export type AiProvider = "ollama" | "openai";
+export type AiProvider = "ollama" | "openai" | "openrouter";
 
 export interface AppSettings {
   aiProvider: AiProvider;
@@ -49,6 +49,9 @@ export interface AppSettings {
   openaiDefaultModel: string;
   /** Optional (e.g. Azure OpenAI proxy). Leave empty for api.openai.com. */
   openaiBaseUrl: string | null;
+  /** OpenRouter — falls back to `OPENROUTER_API_KEY` env when empty. */
+  openrouterApiKey: string | null;
+  openrouterDefaultModel: string;
   ttsVoice: string | null;
   sttLanguage: string;
 }

@@ -15,7 +15,12 @@ export async function getSettings(): Promise<AppSettings> {
     const refetched = await db.select().from(appSettings).where(eq(appSettings.id, SINGLETON_ID)).limit(1);
     row = refetched[0]!;
   }
-  const provider = row.aiProvider === "openai" ? "openai" : "ollama";
+  const provider: AppSettings["aiProvider"] =
+    row.aiProvider === "openai"
+      ? "openai"
+      : row.aiProvider === "openrouter"
+        ? "openrouter"
+        : "ollama";
   return {
     aiProvider: provider,
     ollamaBaseUrl: row.ollamaBaseUrl,
@@ -24,6 +29,8 @@ export async function getSettings(): Promise<AppSettings> {
     openaiApiKey: row.openaiApiKey ?? null,
     openaiDefaultModel: row.openaiDefaultModel ?? "gpt-4o-mini",
     openaiBaseUrl: row.openaiBaseUrl ?? null,
+    openrouterApiKey: row.openrouterApiKey ?? null,
+    openrouterDefaultModel: row.openrouterDefaultModel ?? "openai/gpt-4o-mini",
     ttsVoice: row.ttsVoice,
     sttLanguage: row.sttLanguage,
   };
@@ -39,6 +46,9 @@ export async function updateSettings(patch: Partial<AppSettings>): Promise<AppSe
   if (patch.openaiApiKey !== undefined) row.openaiApiKey = patch.openaiApiKey;
   if (patch.openaiDefaultModel !== undefined) row.openaiDefaultModel = patch.openaiDefaultModel;
   if (patch.openaiBaseUrl !== undefined) row.openaiBaseUrl = patch.openaiBaseUrl;
+  if (patch.openrouterApiKey !== undefined) row.openrouterApiKey = patch.openrouterApiKey;
+  if (patch.openrouterDefaultModel !== undefined)
+    row.openrouterDefaultModel = patch.openrouterDefaultModel;
   if (patch.ttsVoice !== undefined) row.ttsVoice = patch.ttsVoice;
   if (patch.sttLanguage !== undefined) row.sttLanguage = patch.sttLanguage;
   await db.update(appSettings).set(row).where(eq(appSettings.id, SINGLETON_ID));

@@ -126,6 +126,11 @@ async function ensureSchema(client: ReturnType<typeof createClient>) {
       ddl: "ALTER TABLE app_settings ADD COLUMN openai_default_model TEXT NOT NULL DEFAULT 'gpt-4o-mini'",
     },
     { name: "openai_base_url", ddl: "ALTER TABLE app_settings ADD COLUMN openai_base_url TEXT" },
+    { name: "openrouter_api_key", ddl: "ALTER TABLE app_settings ADD COLUMN openrouter_api_key TEXT" },
+    {
+      name: "openrouter_default_model",
+      ddl: "ALTER TABLE app_settings ADD COLUMN openrouter_default_model TEXT NOT NULL DEFAULT 'openai/gpt-4o-mini'",
+    },
   ];
   for (const col of appCols) {
     const pr = await client.execute(

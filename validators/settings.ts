@@ -6,13 +6,15 @@ const optionalUrlOrEmpty = z.preprocess(
 );
 
 export const settingsSchema = z.object({
-  aiProvider: z.enum(["ollama", "openai"]),
+  aiProvider: z.enum(["ollama", "openai", "openrouter"]),
   ollamaBaseUrl: z.string().url(),
   ollamaDefaultModel: z.string().min(1),
   ollamaEmbeddingModel: z.string().min(1),
   openaiApiKey: z.string().nullable().optional(),
   openaiDefaultModel: z.string().min(1),
   openaiBaseUrl: optionalUrlOrEmpty,
+  openrouterApiKey: z.string().nullable().optional(),
+  openrouterDefaultModel: z.string().min(1),
   ttsVoice: z.string().nullable(),
   sttLanguage: z.string().min(2),
 });
@@ -20,13 +22,15 @@ export const settingsSchema = z.object({
 export type SettingsInput = z.infer<typeof settingsSchema>;
 
 export const settingsPatchSchema = z.object({
-  aiProvider: z.enum(["ollama", "openai"]).optional(),
+  aiProvider: z.enum(["ollama", "openai", "openrouter"]).optional(),
   ollamaBaseUrl: z.string().url().optional(),
   ollamaDefaultModel: z.string().min(1).optional(),
   ollamaEmbeddingModel: z.string().min(1).optional(),
   openaiApiKey: z.string().nullable().optional(),
   openaiDefaultModel: z.string().min(1).optional(),
   openaiBaseUrl: optionalUrlOrEmpty,
+  openrouterApiKey: z.string().nullable().optional(),
+  openrouterDefaultModel: z.string().min(1).optional(),
   ttsVoice: z.string().nullable().optional(),
   sttLanguage: z.string().min(2).optional(),
 });

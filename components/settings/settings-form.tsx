@@ -26,6 +26,7 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
   const [voices, setVoices] = useState<{ name: string; lang: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [openaiKeyTouched, setOpenaiKeyTouched] = useState(false);
+  const [openrouterKeyTouched, setOpenrouterKeyTouched] = useState(false);
   const skipNextProviderRefresh = useRef(true);
 
   useEffect(() => {
@@ -44,11 +45,13 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
       const data = (await res.json()) as { models: string[]; provider?: AiProvider };
       setModels(data.models);
       if (!silent) {
-        toast.success(
+        const label =
           data.provider === "openai"
-            ? `Loaded ${data.models.length} OpenAI model id(s)`
-            : `Loaded ${data.models.length} Ollama model(s)`
-        );
+            ? "OpenAI"
+            : data.provider === "openrouter"
+              ? "OpenRouter"
+              : "Ollama";
+        toast.success(`Loaded ${data.models.length} ${label} model(s)`);
       }
     } catch {
       if (!silent) toast.error("Failed to refresh model list");
@@ -69,6 +72,7 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
     try {
       const body: Record<string, unknown> = { ...settings };
       if (!openaiKeyTouched) delete body.openaiApiKey;
+      if (!openrouterKeyTouched) delete body.openrouterApiKey;
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -78,6 +82,7 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
       const data = (await res.json()) as { settings?: AppSettings };
       if (data.settings) setSettings(data.settings);
       setOpenaiKeyTouched(false);
+      setOpenrouterKeyTouched(false);
       toast.success("Settings saved");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save failed";
@@ -103,6 +108,7 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
           <SelectContent>
             <SelectItem value="ollama">Local Ollama</SelectItem>
             <SelectItem value="openai">OpenAI API</SelectItem>
+            <SelectItem value="openrouter">OpenRouter</SelectItem>
           </SelectContent>
         </Select>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -111,7 +117,63 @@ export function SettingsForm({ initialSettings, initialModels }: SettingsFormPro
         </p>
       </div>
 
-      {settings.aiProvider === "openai" ? (
+      {settings.aiProvider === "openrouter" ? (
+        <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+          <h2 className="text-sm font-semibold">OpenRouter</h2>
+          <p className="text-xs text-muted-foreground">
+            Uses the OpenAI-compatible API at{" "}
+            <span className="font-mono">openrouter.ai</span> — one key for many models (Claude,
+            Gemini, Llama, GPT, …).
+          </p>
+          <div>
+            <Label htmlFor="openrouter-key">API key</Label>
+            <Input
+              id="openrouter-key"
+              type="password"
+              autoComplete="off"
+              value={settings.openrouterApiKey ?? ""}
+              onChange={(e) => {
+                setOpenrouterKeyTouched(true);
+                setSettings({ ...settings, openrouterApiKey: e.target.value || null });
+              }}
+              placeholder="sk-or-… or set OPENROUTER_API_KEY in .env"
+            />
+          </div>
+          <div>
+            <Label htmlFor="openrouter-model">Default model</Label>
+            {models.length > 0 ? (
+              <Select
+                value={settings.openrouterDefaultModel}
+                onValueChange={(v) => setSettings({ ...settings, openrouterDefaultModel: v })}
+              >
+                <SelectTrigger id="openrouter-model" className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {models.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="openrouter-model"
+                className="mt-1.5 font-mono text-xs"
+                value={settings.openrouterDefaultModel}
+                onChange={(e) =>
+                  setSettings({ ...settings, openrouterDefaultModel: e.target.value })
+                }
+                placeholder="openai/gpt-4o-mini"
+              />
+            )}
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refreshModels()}>
+            Reload models from OpenRouter
+          </Button>
+        </div>
+      ) : settings.aiProvider === "openai" ? (
         <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
           <h2 className="text-sm font-semibold">OpenAI</h2>
           <div>

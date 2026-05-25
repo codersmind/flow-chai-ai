@@ -10,7 +10,7 @@ async function resolveModelId(requested?: string): Promise<string> {
   const settings = await getSettings();
   const fallback = await getDefaultChatModelId();
   const preferred = requested?.trim() || fallback.trim();
-  if (settings.aiProvider === "openai") {
+  if (settings.aiProvider === "openai" || settings.aiProvider === "openrouter") {
     return preferred;
   }
   const models = await listOllamaModels();
